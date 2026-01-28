@@ -118,32 +118,46 @@ export function UploadHistoryList({ history, activeId, onSelect, onDelete }: Upl
   if (history.length === 0) return null;
   
   return (
-    <div className="mt-6">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        Upload History
-      </h3>
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-6 h-6 bg-gradient-to-br from-primary to-chart-purple rounded-md flex items-center justify-center">
+          <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+        </div>
+        <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
+          Data Bank Records
+        </h3>
+        <span className="ml-auto text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+          {history.length} file{history.length !== 1 ? 's' : ''}
+        </span>
+      </div>
       <div className="space-y-2">
-        {history.map((item) => (
+        {history.map((item, index) => (
           <div
             key={item.id}
             className={cn(
-              'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+              'flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group',
               activeId === item.id
-                ? 'border-primary bg-primary/5'
-                : 'border-border bg-card hover:border-primary/50'
+                ? 'border-primary bg-gradient-to-r from-primary/10 to-chart-purple/10 shadow-lg shadow-primary/10'
+                : 'border-border bg-card hover:border-primary/50 hover:shadow-md'
             )}
             onClick={() => onSelect(item.id)}
           >
-            <FileSpreadsheet className={cn(
-              'w-5 h-5 shrink-0',
-              activeId === item.id ? 'text-primary' : 'text-muted-foreground'
-            )} />
+            <div className={cn(
+              'w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-colors',
+              activeId === item.id 
+                ? 'bg-gradient-to-br from-primary to-chart-purple text-white' 
+                : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'
+            )}>
+              #{index + 1}
+            </div>
             
             <div className="flex-1 min-w-0">
-              <p className="font-medium truncate text-sm">{item.fileName}</p>
-              <p className="text-xs text-muted-foreground">
-                {item.rowCount.toLocaleString()} rows • {formatDate(item.uploadedAt)}
-              </p>
+              <p className="font-semibold truncate text-sm">{item.fileName}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                <span className="font-medium text-primary">{item.rowCount.toLocaleString()} rows</span>
+                <span>•</span>
+                <span>{formatDate(item.uploadedAt)}</span>
+              </div>
             </div>
             
             <button
@@ -151,7 +165,7 @@ export function UploadHistoryList({ history, activeId, onSelect, onDelete }: Upl
                 e.stopPropagation();
                 onDelete(item.id);
               }}
-              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
               aria-label="Delete dataset"
             >
               <X className="w-4 h-4" />

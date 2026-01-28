@@ -54,15 +54,17 @@ const Dashboard = () => {
   // No data uploaded yet - show upload screen
   if (!activeDataset) {
     return (
-      <div className="dashboard-layout flex items-center justify-center p-8">
+      <div className="dashboard-layout flex items-center justify-center p-8 bg-gradient-to-br from-background via-background to-primary/5">
         <div className="max-w-xl w-full">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="w-8 h-8 text-primary" />
+            <div className="w-20 h-20 bg-gradient-to-br from-primary to-chart-purple rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+              <BarChart3 className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Analytics Dashboard</h1>
-            <p className="text-muted-foreground">
-              Upload an Excel file to generate insights with interactive USA map visualization
+            <h1 className="text-4xl font-black text-foreground mb-2 tracking-tight">
+              Starzopp <span className="text-primary">ICP Bank</span>
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Your Intelligent Customer Profile Data Repository
             </p>
           </div>
           
@@ -121,11 +123,18 @@ const Dashboard = () => {
                 )}
               </Button>
               
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">{activeDataset.fileName}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {filteredData.length.toLocaleString()} of {activeDataset.rowCount.toLocaleString()} records
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-chart-purple rounded-lg flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-foreground">
+                    <span className="text-primary">Starzopp</span> ICP Bank
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    {activeDataset.fileName} • {filteredData.length.toLocaleString()} of {activeDataset.rowCount.toLocaleString()} records
+                  </p>
+                </div>
               </div>
             </div>
             
