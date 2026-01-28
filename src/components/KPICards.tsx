@@ -40,10 +40,26 @@ export function KPICards({ data, previousData }: KPICardsProps) {
   ];
   
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => (
-        <KPICard key={card.title} {...card} />
-      ))}
+    <div className="space-y-4">
+      {/* Prominent Total Customers Display */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 text-primary-foreground shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium opacity-90">Total Customers</p>
+            <p className="text-5xl font-black mt-1 tracking-tight">{data.totalCompanies.toLocaleString()}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-white/20">
+            <UserCheck className="w-8 h-8" />
+          </div>
+        </div>
+      </div>
+      
+      {/* Other KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {cards.filter(c => c.title !== 'Total Customers').map((card) => (
+          <KPICard key={card.title} {...card} />
+        ))}
+      </div>
     </div>
   );
 }
