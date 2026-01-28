@@ -6,10 +6,11 @@ import { USAMap, MetricSelector } from '@/components/USAMap';
 import { FilterPanel } from '@/components/FilterPanel';
 import { AutoCharts } from '@/components/AutoCharts';
 import { DataTable } from '@/components/DataTable';
+import { DataSummary } from '@/components/DataSummary';
 import { TopStatesTable } from '@/components/TopStatesTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
-import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,7 @@ const Dashboard = () => {
   const [mapMetricType, setMapMetricType] = useState<'count' | 'percentage' | 'icp'>('count');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
-  const [activeTab, setActiveTab] = useState('map');
+  const [activeTab, setActiveTab] = useState('summary');
   
   const handleStateClick = (stateCode: string) => {
     setSelectedState(stateCode);
@@ -168,6 +169,10 @@ const Dashboard = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <TabsList>
+                <TabsTrigger value="summary" className="gap-2">
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Summary
+                </TabsTrigger>
                 <TabsTrigger value="map" className="gap-2">
                   <Map className="w-4 h-4" />
                   Map
@@ -186,6 +191,10 @@ const Dashboard = () => {
                 <MetricSelector value={mapMetricType} onChange={setMapMetricType} />
               )}
             </div>
+            
+            <TabsContent value="summary" className="mt-0">
+              <DataSummary data={filteredData} columns={activeDataset.columns} />
+            </TabsContent>
             
             <TabsContent value="map" className="mt-0">
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
