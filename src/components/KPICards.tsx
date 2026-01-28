@@ -1,0 +1,91 @@
+import { KPIData } from '@/types/analytics';
+import { Users, Target, Building2, MapPin, TrendingUp, TrendingDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface KPICardsProps {
+  data: KPIData;
+  previousData?: KPIData;
+}
+
+export function KPICards({ data, previousData }: KPICardsProps) {
+  const cards = [
+    {
+      title: 'Total Records',
+      value: data.totalRecords,
+      icon: Users,
+      variant: 'primary' as const,
+      previousValue: previousData?.totalRecords
+    },
+    {
+      title: 'ICP People',
+      value: data.totalICP,
+      icon: Target,
+      variant: 'accent' as const,
+      previousValue: previousData?.totalICP
+    },
+    {
+      title: 'Companies',
+      value: data.totalCompanies,
+      icon: Building2,
+      variant: 'amber' as const,
+      previousValue: previousData?.totalCompanies
+    },
+    {
+      title: 'States Covered',
+      value: data.stateCount,
+      icon: MapPin,
+      variant: 'rose' as const,
+      previousValue: previousData?.stateCount
+    }
+  ];
+  
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map((card) => (
+        <KPICard key={card.title} {...card} />
+      ))}
+    </div>
+  );
+}
+
+interface KPICardProps {
+  title: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  variant: 'primary' | 'accent' | 'amber' | 'rose';
+  previousValue?: number;
+}
+
+function KPICard({ title, value, icon: Icon, variant, previousValue }: KPICardProps) {
+  const change = previousValue !== undefined && previousValue > 0
+    ? ((value - previousValue) / previousValue) * 100
+    : null;
+  
+  return (
+    <div className={cn('kpi-card', `kpi-card-${variant}`)}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium opacity-80">{title}</p>
+          <p className="text-3xl font-bold mt-1">{value.toLocaleString()}</p>
+        </div>
+        <div className="p-2 rounded-lg bg-white/10">
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      
+      {change !== null && (
+        <div className="flex items-center gap-1.5 mt-3 text-sm">
+          {change >= 0 ? (
+            <TrendingUp className="w-4 h-4" />
+          ) : (
+            <TrendingDown className="w-4 h-4" />
+          )}
+          <span className="font-medium">
+            {change >= 0 ? '+' : ''}{change.toFixed(1)}%
+          </span>
+          <span className="opacity-70">vs previous</span>
+        </div>
+      )}
+    </div>
+  );
+}
