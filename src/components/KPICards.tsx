@@ -40,22 +40,27 @@ export function KPICards({ data, previousData }: KPICardsProps) {
   ];
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Prominent Total Customers Display */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 text-primary-foreground shadow-lg">
-        <div className="flex items-center justify-between">
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-chart-purple rounded-3xl p-8 text-primary-foreground shadow-2xl">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
+        
+        <div className="relative flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium opacity-90">Total Customers</p>
-            <p className="text-5xl font-black mt-1 tracking-tight">{data.totalCompanies.toLocaleString()}</p>
+            <p className="text-sm font-semibold uppercase tracking-wider opacity-80">Total Customers</p>
+            <p className="text-6xl font-black mt-2 tracking-tight drop-shadow-lg">{data.totalCompanies.toLocaleString()}</p>
+            <p className="text-sm mt-2 opacity-70">Sum of all numeric values</p>
           </div>
-          <div className="p-4 rounded-xl bg-white/20">
-            <UserCheck className="w-8 h-8" />
+          <div className="p-5 rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg">
+            <UserCheck className="w-10 h-10" />
           </div>
         </div>
       </div>
       
       {/* Other KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {cards.filter(c => c.title !== 'Total Customers').map((card) => (
           <KPICard key={card.title} {...card} />
         ))}
@@ -80,28 +85,36 @@ function KPICard({ title, value, icon: Icon, variant, previousValue }: KPICardPr
     : null;
   
   return (
-    <div className={cn('kpi-card', `kpi-card-${variant}`)}>
-      <div className="flex items-start justify-between">
+    <div className={cn('kpi-card group', `kpi-card-${variant}`)}>
+      {/* Decorative glow effect */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-white/10 to-transparent rounded-2xl" />
+      
+      <div className="relative flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium opacity-80">{title}</p>
-          <p className="text-3xl font-bold mt-1">{value.toLocaleString()}</p>
+          <p className="text-sm font-semibold uppercase tracking-wide opacity-80">{title}</p>
+          <p className="text-4xl font-black mt-2 tracking-tight">{value.toLocaleString()}</p>
         </div>
-        <div className="p-2 rounded-lg bg-white/10">
-          <Icon className="w-5 h-5" />
+        <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shadow-inner">
+          <Icon className="w-6 h-6" />
         </div>
       </div>
       
       {change !== null && (
-        <div className="flex items-center gap-1.5 mt-3 text-sm">
-          {change >= 0 ? (
-            <TrendingUp className="w-4 h-4" />
-          ) : (
-            <TrendingDown className="w-4 h-4" />
-          )}
-          <span className="font-medium">
-            {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-          </span>
-          <span className="opacity-70">vs previous</span>
+        <div className="relative flex items-center gap-2 mt-4 text-sm">
+          <div className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-full",
+            change >= 0 ? "bg-white/20" : "bg-black/10"
+          )}>
+            {change >= 0 ? (
+              <TrendingUp className="w-3.5 h-3.5" />
+            ) : (
+              <TrendingDown className="w-3.5 h-3.5" />
+            )}
+            <span className="font-bold">
+              {change >= 0 ? '+' : ''}{change.toFixed(1)}%
+            </span>
+          </div>
+          <span className="opacity-70 text-xs">vs previous</span>
         </div>
       )}
     </div>

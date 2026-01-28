@@ -18,20 +18,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary - Deep Blue */
-    --primary: 224 76% 48%;
+    /* Primary - Vibrant Indigo */
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Slate */
-    --secondary: 215 20% 93%;
+    /* Secondary - Cool Gray */
+    --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
 
     /* Muted surfaces */
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* Accent - Teal */
-    --accent: 168 76% 36%;
+    /* Accent - Vibrant Teal */
+    --accent: 172 66% 50%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive */
@@ -41,41 +41,41 @@
     /* Borders */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 224 76% 48%;
+    --ring: 243 75% 59%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 224 76% 48%;
+    --sidebar-primary: 243 75% 59%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 224 76% 48%;
+    --sidebar-ring: 243 75% 59%;
 
-    /* Data Visualization Palette */
-    --chart-blue: 224 76% 48%;
-    --chart-teal: 168 76% 42%;
+    /* Vibrant Data Visualization Palette */
+    --chart-blue: 217 91% 60%;
+    --chart-teal: 172 66% 50%;
     --chart-amber: 38 92% 50%;
-    --chart-rose: 346 77% 50%;
+    --chart-rose: 340 82% 52%;
     --chart-purple: 262 83% 58%;
     --chart-emerald: 160 84% 39%;
     --chart-slate: 215 16% 47%;
     --chart-cyan: 189 94% 43%;
 
     /* Map gradient colors */
-    --map-low: 199 89% 95%;
-    --map-mid: 199 89% 70%;
-    --map-high: 199 89% 48%;
-    --map-accent: 168 76% 42%;
+    --map-low: 217 91% 95%;
+    --map-mid: 217 91% 70%;
+    --map-high: 217 91% 55%;
+    --map-accent: 172 66% 50%;
 
-    /* KPI card gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(224 76% 48%) 0%, hsl(224 76% 38%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(168 76% 42%) 0%, hsl(168 76% 32%) 100%);
-    --gradient-amber: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(30 92% 45%) 100%);
-    --gradient-rose: linear-gradient(135deg, hsl(346 77% 50%) 0%, hsl(346 77% 40%) 100%);
+    /* Vibrant KPI card gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(243 75% 59%) 0%, hsl(262 83% 58%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(172 66% 50%) 0%, hsl(160 84% 39%) 100%);
+    --gradient-amber: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(25 95% 53%) 100%);
+    --gradient-rose: linear-gradient(135deg, hsl(340 82% 52%) 0%, hsl(326 78% 50%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(220 13% 91% / 0.5);
@@ -142,33 +142,53 @@
 @layer components {
   /* KPI Card styles */
   .kpi-card {
-    @apply relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-200;
-    box-shadow: var(--shadow-md);
+    @apply relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all duration-300;
+    box-shadow: 0 4px 20px -4px hsl(220 13% 91% / 0.5);
   }
 
   .kpi-card:hover {
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -8px hsl(220 13% 91% / 0.6);
+    transform: translateY(-4px);
   }
 
   .kpi-card-primary {
     background: var(--gradient-primary);
     @apply border-0 text-white;
+    box-shadow: 0 8px 32px -4px hsl(243 75% 59% / 0.4);
+  }
+
+  .kpi-card-primary:hover {
+    box-shadow: 0 16px 48px -8px hsl(243 75% 59% / 0.5);
   }
 
   .kpi-card-accent {
     background: var(--gradient-accent);
     @apply border-0 text-white;
+    box-shadow: 0 8px 32px -4px hsl(172 66% 50% / 0.4);
+  }
+
+  .kpi-card-accent:hover {
+    box-shadow: 0 16px 48px -8px hsl(172 66% 50% / 0.5);
   }
 
   .kpi-card-amber {
     background: var(--gradient-amber);
     @apply border-0 text-white;
+    box-shadow: 0 8px 32px -4px hsl(38 92% 50% / 0.4);
+  }
+
+  .kpi-card-amber:hover {
+    box-shadow: 0 16px 48px -8px hsl(38 92% 50% / 0.5);
   }
 
   .kpi-card-rose {
     background: var(--gradient-rose);
     @apply border-0 text-white;
+    box-shadow: 0 8px 32px -4px hsl(340 82% 52% / 0.4);
+  }
+
+  .kpi-card-rose:hover {
+    box-shadow: 0 16px 48px -8px hsl(340 82% 52% / 0.5);
   }
 
   /* Filter sidebar */
