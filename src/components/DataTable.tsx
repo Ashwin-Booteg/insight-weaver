@@ -20,15 +20,16 @@ interface DataTableProps {
   className?: string;
 }
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 25;
 
 export function DataTable({ data, columns, className }: DataTableProps) {
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null);
   
+  // Show ALL columns from the file (excluding only the normalized helper columns)
   const displayColumns = useMemo(() => {
-    return columns.filter(col => !col.name.endsWith('_normalized')).slice(0, 10);
+    return columns.filter(col => !col.name.endsWith('_normalized'));
   }, [columns]);
   
   const filteredData = useMemo(() => {
