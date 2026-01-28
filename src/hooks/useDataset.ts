@@ -184,13 +184,8 @@ export function useDataset() {
     const stateColumn = activeDataset.columns.find(c => c.isState);
     const statusColumn = activeDataset.columns.find(c => c.isStatus);
     
-    // Find role/title column for counting
-    const roleColumn = activeDataset.columns.find(c => 
-      c.name.toLowerCase().includes('role') || 
-      c.name.toLowerCase().includes('title') || 
-      c.name.toLowerCase().includes('position') ||
-      c.name.toLowerCase().includes('designation')
-    );
+    // Get all numeric columns
+    const numericColumns = activeDataset.columns.filter(c => c.type === 'number');
     
     let icpCount = 0;
     if (icpConfig.mode === 'column' && icpConfig.columnName) {
@@ -208,28 +203,21 @@ export function useDataset() {
     const uniqueStates = new Set<string>();
     const statusBreakdown: Record<string, number> = {};
     
-    // Count by role and state - sum of all people/customers
-    const roleStateCount: Record<string, Record<string, number>> = {};
-    let totalCustomers = 0;
+    // Sum ALL numeric values across all rows and all numeric columns
+    let totalNumericSum = 0;
     
     for (const row of filteredData) {
-      // Count each record as a customer
-      totalCustomers++;
-      
       if (stateColumn) {
         const state = row[`${stateColumn.name}_normalized`];
         if (state) uniqueStates.add(state as string);
       }
       
-      // Track role by state breakdown
-      if (roleColumn && stateColumn) {
-        const role = String(row[roleColumn.name] || 'Unknown');
-        const state = String(row[`${stateColumn.name}_normalized`] || 'Unknown');
-        
-        if (!roleStateCount[state]) {
-          roleStateCount[state] = {};
+      // Sum all numeric values in this row
+      for (const col of numericColumns) {
+        const value = row[col.name];
+        if (typeof value === 'number' && !isNaN(value)) {
+          totalNumericSum += value;
         }
-        roleStateCount[state][role] = (roleStateCount[state][role] || 0) + 1;
       }
       
       if (statusColumn) {
@@ -241,7 +229,7 @@ export function useDataset() {
     return {
       totalRecords: filteredData.length,
       totalICP: icpCount,
-      totalCompanies: totalCustomers, // Total customers = sum of all records (roles across states)
+      totalCompanies: totalNumericSum, // Sum of all numeric values across rows & columns
       stateCount: uniqueStates.size,
       statusBreakdown: Object.keys(statusBreakdown).length > 0 ? statusBreakdown : undefined
     };
