@@ -1,5 +1,5 @@
 import { KPIData } from '@/types/analytics';
-import { Users, Target, Building2, MapPin, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, Target, Building2, MapPin, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface KPICardsProps {
@@ -17,18 +17,18 @@ export function KPICards({ data, previousData }: KPICardsProps) {
       previousValue: previousData?.totalRecords
     },
     {
+      title: 'Total Customers',
+      value: data.totalCompanies,
+      icon: UserCheck,
+      variant: 'accent' as const,
+      previousValue: previousData?.totalCompanies
+    },
+    {
       title: 'ICP People',
       value: data.totalICP,
       icon: Target,
-      variant: 'accent' as const,
-      previousValue: previousData?.totalICP
-    },
-    {
-      title: 'Companies',
-      value: data.totalCompanies,
-      icon: Building2,
       variant: 'amber' as const,
-      previousValue: previousData?.totalCompanies
+      previousValue: previousData?.totalICP
     },
     {
       title: 'States Covered',
@@ -55,6 +55,8 @@ interface KPICardProps {
   variant: 'primary' | 'accent' | 'amber' | 'rose';
   previousValue?: number;
 }
+
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 function KPICard({ title, value, icon: Icon, variant, previousValue }: KPICardProps) {
   const change = previousValue !== undefined && previousValue > 0
