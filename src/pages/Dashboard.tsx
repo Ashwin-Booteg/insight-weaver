@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useDataset } from '@/hooks/useDataset';
 import { FileUpload, UploadHistoryList } from '@/components/FileUpload';
 import { KPICards } from '@/components/KPICards';
@@ -10,12 +12,18 @@ import { DataSummary } from '@/components/DataSummary';
 import { TopStatesTable } from '@/components/TopStatesTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
-import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet } from 'lucide-react';
+import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { User, Session } from '@supabase/supabase-js';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const {
     activeDataset,
     activeDatasetId,
@@ -39,6 +47,33 @@ const Dashboard = () => {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [activeTab, setActiveTab] = useState('summary');
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [authLoading, user, navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
   
   const handleStateClick = (stateCode: string) => {
     setSelectedState(stateCode);
@@ -50,6 +85,18 @@ const Dashboard = () => {
   };
   
   const selectedStateMetric = stateMetrics.find(s => s.stateCode === selectedState);
+
+  // Loading auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   // No data uploaded yet - show upload screen
   if (!activeDataset) {
@@ -163,6 +210,16 @@ const Dashboard = () => {
                   </span>
                 </Button>
               </label>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </header>
