@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useDataset } from '@/hooks/useDataset';
+import { useCloudDataset } from '@/hooks/useCloudDataset';
 import { FileUpload, UploadHistoryList } from '@/components/FileUpload';
 import { KPICards } from '@/components/KPICards';
 import { USAMap, MetricSelector } from '@/components/USAMap';
@@ -14,11 +14,13 @@ import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
 import { IndustryBreakdownChart, LevelBreakdownChart } from '@/components/charts/BreakdownCharts';
 import { ActiveFiltersBar } from '@/components/charts/ActiveFiltersBar';
-import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet, LogOut, Loader2, PieChart, TrendingUp } from 'lucide-react';
+import { AIInsights } from '@/components/AIInsights';
+import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { User, Session } from '@supabase/supabase-js';
+import { Badge } from '@/components/ui/badge';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -42,8 +44,10 @@ const Dashboard = () => {
     icpConfig,
     setICPConfig,
     isLoading,
-    error
-  } = useDataset();
+    isSyncing,
+    error,
+    refreshFromCloud
+  } = useCloudDataset(user?.id || null);
   
   const [mapMetricType, setMapMetricType] = useState<'count' | 'percentage' | 'icp'>('count');
   const [selectedState, setSelectedState] = useState<string | null>(null);
@@ -164,9 +168,13 @@ const Dashboard = () => {
             <h1 className="text-4xl font-black text-foreground mb-2 tracking-tight">
               Starzopp <span className="text-primary">ICP Bank</span>
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-lg mb-2">
               Your Intelligent Customer Profile Data Repository
             </p>
+            <Badge variant="outline" className="gap-1.5 text-chart-teal border-chart-teal/30">
+              <Cloud className="w-3 h-3" />
+              Cloud Synced
+            </Badge>
           </div>
           
           <FileUpload onUpload={uploadFile} isLoading={isLoading} />
@@ -232,9 +240,23 @@ const Dashboard = () => {
                   <h1 className="text-lg font-black text-foreground">
                     <span className="text-primary">Starzopp</span> ICP Bank
                   </h1>
-                  <p className="text-xs text-muted-foreground">
-                    {activeDataset.fileName} • {filteredData.length.toLocaleString()} of {activeDataset.rowCount.toLocaleString()} records
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {activeDataset.fileName} • {filteredData.length.toLocaleString()} of {activeDataset.rowCount.toLocaleString()} records
+                    </p>
+                    {isSyncing && (
+                      <Badge variant="outline" className="gap-1 text-xs">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        Syncing
+                      </Badge>
+                    )}
+                    {!isSyncing && (
+                      <Badge variant="outline" className="gap-1 text-xs text-chart-teal border-chart-teal/30">
+                        <Cloud className="w-3 h-3" />
+                        Cloud
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -304,6 +326,10 @@ const Dashboard = () => {
                   <TrendingUp className="w-4 h-4" />
                   Overview
                 </TabsTrigger>
+                <TabsTrigger value="ai-insights" className="gap-2">
+                  <Brain className="w-4 h-4" />
+                  AI Insights
+                </TabsTrigger>
                 <TabsTrigger value="charts" className="gap-2">
                   <PieChart className="w-4 h-4" />
                   Analytics
@@ -361,6 +387,25 @@ const Dashboard = () => {
                 <h2 className="text-lg font-bold text-foreground mb-4">Recent Records</h2>
                 <DataTable data={filteredData.slice(0, 10)} columns={activeDataset.columns} />
               </section>
+            </TabsContent>
+            
+            {/* AI Insights Tab */}
+            <TabsContent value="ai-insights" className="mt-0">
+              <AIInsights
+                datasetId={activeDatasetId}
+                dataSample={filteredData}
+                filters={{
+                  industries: filters.industries,
+                  states: filters.states
+                }}
+                kpis={{
+                  totalRecords: kpiData.totalRecords,
+                  totalICP: kpiData.totalICP,
+                  stateCount: kpiData.stateCount,
+                  industryBreakdown: kpiData.industryBreakdown,
+                  levelBreakdown: kpiData.levelBreakdown
+                }}
+              />
             </TabsContent>
             
             {/* Charts Tab - Full Analytics */}

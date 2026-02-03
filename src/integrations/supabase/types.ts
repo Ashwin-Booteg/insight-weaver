@@ -14,7 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_analysis: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          dataset_id: string
+          id: string
+          result: Json
+          user_id: string
+        }
+        Insert: {
+          analysis_type: string
+          created_at?: string
+          dataset_id: string
+          id?: string
+          result: Json
+          user_id: string
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          dataset_id?: string
+          id?: string
+          result?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analysis_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dataset_rows: {
+        Row: {
+          created_at: string
+          dataset_id: string
+          id: string
+          industry_category: string | null
+          row_data: Json
+          state_normalized: string | null
+        }
+        Insert: {
+          created_at?: string
+          dataset_id: string
+          id?: string
+          industry_category?: string | null
+          row_data: Json
+          state_normalized?: string | null
+        }
+        Update: {
+          created_at?: string
+          dataset_id?: string
+          id?: string
+          industry_category?: string | null
+          row_data?: Json
+          state_normalized?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_rows_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      datasets: {
+        Row: {
+          columns: Json
+          created_at: string
+          file_name: string
+          id: string
+          row_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          columns?: Json
+          created_at?: string
+          file_name: string
+          id?: string
+          row_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          file_name?: string
+          id?: string
+          row_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
