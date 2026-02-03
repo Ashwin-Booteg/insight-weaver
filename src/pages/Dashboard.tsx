@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDataset } from '@/hooks/useDataset';
@@ -12,7 +12,9 @@ import { DataSummary } from '@/components/DataSummary';
 import { TopStatesTable } from '@/components/TopStatesTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
-import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet, LogOut, Loader2 } from 'lucide-react';
+import { IndustryBreakdownChart, LevelBreakdownChart } from '@/components/charts/BreakdownCharts';
+import { ActiveFiltersBar } from '@/components/charts/ActiveFiltersBar';
+import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet, LogOut, Loader2, PieChart, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -46,7 +48,59 @@ const Dashboard = () => {
   const [mapMetricType, setMapMetricType] = useState<'count' | 'percentage' | 'icp'>('count');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
-  const [activeTab, setActiveTab] = useState('summary');
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Build active filters list for display
+  const activeFiltersList = useMemo(() => {
+    const list: { type: 'industry' | 'level' | 'domain' | 'state' | 'category'; value: string }[] = [];
+    
+    filters.industries.forEach(i => list.push({ type: 'industry', value: i }));
+    filters.levels.forEach(l => list.push({ type: 'level', value: l }));
+    filters.domains.forEach(d => list.push({ type: 'domain', value: d }));
+    filters.states.forEach(s => list.push({ type: 'state', value: s }));
+    Object.entries(filters.categories).forEach(([_, values]) => {
+      values.forEach(v => list.push({ type: 'category', value: v }));
+    });
+    
+    return list;
+  }, [filters]);
+
+  const handleRemoveFilter = (filter: { type: string; value: string }) => {
+    switch (filter.type) {
+      case 'industry':
+        setFilters({ ...filters, industries: filters.industries.filter(i => i !== filter.value) });
+        break;
+      case 'level':
+        setFilters({ ...filters, levels: filters.levels.filter(l => l !== filter.value) });
+        break;
+      case 'domain':
+        setFilters({ ...filters, domains: filters.domains.filter(d => d !== filter.value) });
+        break;
+      case 'state':
+        setFilters({ ...filters, states: filters.states.filter(s => s !== filter.value) });
+        break;
+      case 'category':
+        const newCategories = { ...filters.categories };
+        Object.keys(newCategories).forEach(key => {
+          newCategories[key] = newCategories[key].filter(v => v !== filter.value);
+        });
+        setFilters({ ...filters, categories: newCategories });
+        break;
+    }
+  };
+
+  const handleClearAllFilters = () => {
+    setFilters({
+      states: [],
+      dateRange: { start: null, end: null },
+      categories: {},
+      numericRanges: {},
+      searchText: '',
+      industries: [],
+      levels: [],
+      domains: []
+    });
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -138,7 +192,7 @@ const Dashboard = () => {
     <div className="dashboard-layout flex min-h-screen">
       {/* Filter Sidebar */}
       <aside className={cn(
-        'w-72 shrink-0 border-r border-border transition-all duration-300 bg-card',
+        'w-80 shrink-0 border-r border-border transition-all duration-300 bg-card',
         !showFilters && 'w-0 overflow-hidden'
       )}>
         {showFilters && (
@@ -171,11 +225,11 @@ const Dashboard = () => {
               </Button>
               
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary to-chart-purple rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-chart-purple rounded-xl flex items-center justify-center shadow-lg">
+                  <BarChart3 className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-foreground">
+                  <h1 className="text-lg font-black text-foreground">
                     <span className="text-primary">Starzopp</span> ICP Bank
                   </h1>
                   <p className="text-xs text-muted-foreground">
@@ -222,6 +276,17 @@ const Dashboard = () => {
               </Button>
             </div>
           </div>
+          
+          {/* Active Filters Bar */}
+          {activeFiltersList.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <ActiveFiltersBar
+                filters={activeFiltersList}
+                onRemove={handleRemoveFilter}
+                onClearAll={handleClearAllFilters}
+              />
+            </div>
+          )}
         </header>
         
         {/* Dashboard Content */}
@@ -234,22 +299,26 @@ const Dashboard = () => {
           {/* Main Visualization Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <div className="flex items-center justify-between gap-4 mb-4">
-              <TabsList>
+              <TabsList className="bg-muted/50">
+                <TabsTrigger value="overview" className="gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="charts" className="gap-2">
+                  <PieChart className="w-4 h-4" />
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger value="map" className="gap-2">
+                  <Map className="w-4 h-4" />
+                  Geographic
+                </TabsTrigger>
                 <TabsTrigger value="summary" className="gap-2">
                   <FileSpreadsheet className="w-4 h-4" />
                   Summary
                 </TabsTrigger>
-                <TabsTrigger value="map" className="gap-2">
-                  <Map className="w-4 h-4" />
-                  Map
-                </TabsTrigger>
-                <TabsTrigger value="charts" className="gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Charts
-                </TabsTrigger>
                 <TabsTrigger value="table" className="gap-2">
                   <Table className="w-4 h-4" />
-                  Table
+                  Data
                 </TabsTrigger>
               </TabsList>
               
@@ -258,14 +327,52 @@ const Dashboard = () => {
               )}
             </div>
             
-            <TabsContent value="summary" className="mt-0">
-              <DataSummary data={filteredData} columns={activeDataset.columns} />
+            {/* Overview Tab - Main Dashboard */}
+            <TabsContent value="overview" className="mt-0 space-y-6">
+              {/* Quick Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {/* Industry Breakdown */}
+                {kpiData.industryBreakdown && (
+                  <IndustryBreakdownChart data={kpiData.industryBreakdown} />
+                )}
+                
+                {/* Level Breakdown */}
+                {kpiData.levelBreakdown && (
+                  <LevelBreakdownChart data={kpiData.levelBreakdown} />
+                )}
+                
+                {/* Top States Quick View */}
+                <div className="chart-container">
+                  <h3 className="text-sm font-bold text-foreground mb-4">Top Regions</h3>
+                  <TopStatesTable
+                    stateMetrics={stateMetrics}
+                    onStateClick={handleStateClick}
+                    selectedState={selectedState}
+                    limit={5}
+                  />
+                </div>
+              </div>
+              
+              {/* Main Charts */}
+              <AutoCharts data={filteredData} columns={activeDataset.columns} />
+              
+              {/* Data Table Preview */}
+              <section>
+                <h2 className="text-lg font-bold text-foreground mb-4">Recent Records</h2>
+                <DataTable data={filteredData.slice(0, 10)} columns={activeDataset.columns} />
+              </section>
             </TabsContent>
             
+            {/* Charts Tab - Full Analytics */}
+            <TabsContent value="charts" className="mt-0">
+              <AutoCharts data={filteredData} columns={activeDataset.columns} />
+            </TabsContent>
+            
+            {/* Map Tab */}
             <TabsContent value="map" className="mt-0">
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 chart-container">
-                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                  <h3 className="text-sm font-bold text-foreground mb-4">
                     USA Distribution by {mapMetricType === 'count' ? 'Record Count' : mapMetricType === 'percentage' ? '% of Total' : 'ICP Count'}
                   </h3>
                   <USAMap
@@ -285,30 +392,16 @@ const Dashboard = () => {
               </div>
             </TabsContent>
             
-            <TabsContent value="charts" className="mt-0">
-              <AutoCharts data={filteredData} columns={activeDataset.columns} />
+            {/* Summary Tab */}
+            <TabsContent value="summary" className="mt-0">
+              <DataSummary data={filteredData} columns={activeDataset.columns} />
             </TabsContent>
             
+            {/* Table Tab */}
             <TabsContent value="table" className="mt-0">
               <DataTable data={filteredData} columns={activeDataset.columns} />
             </TabsContent>
           </Tabs>
-          
-          {/* Charts Section (visible when on map tab) */}
-          {activeTab === 'map' && (
-            <section className="mt-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Data Insights</h2>
-              <AutoCharts data={filteredData} columns={activeDataset.columns} />
-            </section>
-          )}
-          
-          {/* Data Table (visible when on map or charts tab) */}
-          {activeTab !== 'table' && (
-            <section className="mt-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Records</h2>
-              <DataTable data={filteredData} columns={activeDataset.columns} />
-            </section>
-          )}
         </div>
       </main>
       

@@ -7,6 +7,9 @@ export interface DataColumn {
   isICP?: boolean;
   isCompany?: boolean;
   isStatus?: boolean;
+  isIndustry?: boolean;
+  isLevel?: boolean;
+  isDomain?: boolean;
   sampleValues?: (string | number | Date | boolean | null)[];
 }
 
@@ -32,6 +35,9 @@ export interface FilterState {
   categories: Record<string, string[]>;
   numericRanges: Record<string, { min: number; max: number }>;
   searchText: string;
+  industries: string[];
+  levels: string[];
+  domains: string[];
 }
 
 export interface KPIData {
@@ -40,6 +46,8 @@ export interface KPIData {
   totalCompanies: number;
   stateCount: number;
   statusBreakdown?: Record<string, number>;
+  industryBreakdown?: Record<string, number>;
+  levelBreakdown?: Record<string, number>;
 }
 
 export interface StateMetric {
@@ -64,6 +72,43 @@ export interface ICPRule {
   operator: 'equals' | 'contains' | 'in' | 'greater' | 'less';
   value: string | number | string[];
 }
+
+// Industry categories for filtering
+export const INDUSTRY_CATEGORIES = [
+  'Movie & Entertainment',
+  'Music & Audio',
+  'Fashion & Apparel',
+  'Technology & Software',
+  'Healthcare & Medical',
+  'Finance & Banking',
+  'E-commerce & Retail',
+  'Education & Training',
+  'Food & Beverage',
+  'Travel & Hospitality',
+  'Real Estate',
+  'Marketing & Advertising',
+  'Sports & Fitness',
+  'Gaming & Esports',
+  'Media & Publishing'
+] as const;
+
+// Audience levels for segmentation
+export const AUDIENCE_LEVELS = [
+  'Enterprise',
+  'Mid-Market',
+  'SMB',
+  'Startup',
+  'Individual/Consumer'
+] as const;
+
+// Domain categories
+export const DOMAIN_CATEGORIES = [
+  'B2B',
+  'B2C',
+  'B2B2C',
+  'D2C',
+  'Marketplace'
+] as const;
 
 // US State mappings
 export const US_STATES: Record<string, string> = {

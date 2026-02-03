@@ -85,8 +85,20 @@ function analyzeColumn(name: string, values: unknown[]): DataColumn {
   const isCompany = companyKeywords.some(k => lowerName.includes(k));
   
   // Detect status columns
-  const statusKeywords = ['status', 'stage', 'state', 'phase', 'lead'];
+  const statusKeywords = ['status', 'stage', 'phase', 'lead'];
   const isStatus = statusKeywords.some(k => lowerName.includes(k)) && !isState;
+  
+  // Detect industry columns
+  const industryKeywords = ['industry', 'sector', 'vertical', 'category', 'niche', 'segment'];
+  const isIndustry = industryKeywords.some(k => lowerName.includes(k));
+  
+  // Detect level/tier columns
+  const levelKeywords = ['level', 'size', 'tier', 'segment', 'audience', 'target', 'market'];
+  const isLevel = levelKeywords.some(k => lowerName.includes(k)) && !isICP;
+  
+  // Detect domain columns
+  const domainKeywords = ['domain', 'type', 'model', 'b2b', 'b2c', 'channel'];
+  const isDomain = domainKeywords.some(k => lowerName.includes(k));
   
   // Detect data type
   let type: DataColumn['type'] = 'text';
@@ -121,6 +133,9 @@ function analyzeColumn(name: string, values: unknown[]): DataColumn {
     isICP,
     isCompany,
     isStatus,
+    isIndustry,
+    isLevel,
+    isDomain,
     sampleValues: nonNullValues.slice(0, 5) as DataColumn['sampleValues']
   };
 }

@@ -1,9 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
-import { DatasetInfo, FilterState, KPIData, StateMetric, ICPConfig, UploadHistory, US_STATES } from '@/types/analytics';
+import { DatasetInfo, FilterState, KPIData, StateMetric, ICPConfig, UploadHistory, US_STATES, INDUSTRY_CATEGORIES, AUDIENCE_LEVELS, DOMAIN_CATEGORIES } from '@/types/analytics';
 import { parseExcelFile, getUniqueValues, getNumericRange } from '@/utils/dataParser';
 
 const STORAGE_KEY = 'analytics_datasets';
-const HISTORY_KEY = 'analytics_upload_history';
 
 export function useDataset() {
   const [datasets, setDatasets] = useState<DatasetInfo[]>(() => {
@@ -40,7 +39,10 @@ export function useDataset() {
     dateRange: { start: null, end: null },
     categories: {},
     numericRanges: {},
-    searchText: ''
+    searchText: '',
+    industries: [],
+    levels: [],
+    domains: []
   });
   
   const [icpConfig, setICPConfig] = useState<ICPConfig>({ mode: 'column' });
@@ -91,7 +93,10 @@ export function useDataset() {
         dateRange: { start: null, end: null },
         categories: {},
         numericRanges: {},
-        searchText: ''
+        searchText: '',
+        industries: [],
+        levels: [],
+        domains: []
       });
       
       return datasetInfo;
@@ -121,12 +126,39 @@ export function useDataset() {
     
     let data = activeDataset.data;
     const stateColumn = activeDataset.columns.find(c => c.isState);
+    const industryColumn = activeDataset.columns.find(c => c.isIndustry);
+    const levelColumn = activeDataset.columns.find(c => c.isLevel);
+    const domainColumn = activeDataset.columns.find(c => c.isDomain);
     
     // Filter by states
     if (filters.states.length > 0 && stateColumn) {
       data = data.filter(row => {
         const normalizedState = row[`${stateColumn.name}_normalized`];
         return filters.states.includes(normalizedState as string);
+      });
+    }
+    
+    // Filter by industries
+    if (filters.industries.length > 0 && industryColumn) {
+      data = data.filter(row => {
+        const industry = String(row[industryColumn.name] || '');
+        return filters.industries.some(fi => industry.toLowerCase().includes(fi.toLowerCase()));
+      });
+    }
+    
+    // Filter by levels
+    if (filters.levels.length > 0 && levelColumn) {
+      data = data.filter(row => {
+        const level = String(row[levelColumn.name] || '');
+        return filters.levels.some(fl => level.toLowerCase().includes(fl.toLowerCase()));
+      });
+    }
+    
+    // Filter by domains
+    if (filters.domains.length > 0 && domainColumn) {
+      data = data.filter(row => {
+        const domain = String(row[domainColumn.name] || '');
+        return filters.domains.some(fd => domain.toLowerCase().includes(fd.toLowerCase()));
       });
     }
     
@@ -183,6 +215,8 @@ export function useDataset() {
     
     const stateColumn = activeDataset.columns.find(c => c.isState);
     const statusColumn = activeDataset.columns.find(c => c.isStatus);
+    const industryColumn = activeDataset.columns.find(c => c.isIndustry);
+    const levelColumn = activeDataset.columns.find(c => c.isLevel);
     
     // Get all numeric columns
     const numericColumns = activeDataset.columns.filter(c => c.type === 'number');
@@ -202,6 +236,8 @@ export function useDataset() {
     
     const uniqueStates = new Set<string>();
     const statusBreakdown: Record<string, number> = {};
+    const industryBreakdown: Record<string, number> = {};
+    const levelBreakdown: Record<string, number> = {};
     
     // Sum ALL numeric values across all rows and all numeric columns
     let totalNumericSum = 0;
@@ -224,6 +260,16 @@ export function useDataset() {
         const status = String(row[statusColumn.name] || 'Unknown');
         statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
       }
+      
+      if (industryColumn) {
+        const industry = String(row[industryColumn.name] || 'Unknown');
+        industryBreakdown[industry] = (industryBreakdown[industry] || 0) + 1;
+      }
+      
+      if (levelColumn) {
+        const level = String(row[levelColumn.name] || 'Unknown');
+        levelBreakdown[level] = (levelBreakdown[level] || 0) + 1;
+      }
     }
     
     return {
@@ -231,7 +277,9 @@ export function useDataset() {
       totalICP: icpCount,
       totalCompanies: totalNumericSum, // Sum of all numeric values across rows & columns
       stateCount: uniqueStates.size,
-      statusBreakdown: Object.keys(statusBreakdown).length > 0 ? statusBreakdown : undefined
+      statusBreakdown: Object.keys(statusBreakdown).length > 0 ? statusBreakdown : undefined,
+      industryBreakdown: Object.keys(industryBreakdown).length > 0 ? industryBreakdown : undefined,
+      levelBreakdown: Object.keys(levelBreakdown).length > 0 ? levelBreakdown : undefined
     };
   }, [activeDataset, filteredData, icpConfig]);
   
@@ -284,7 +332,7 @@ export function useDataset() {
   }, [activeDataset, filteredData, icpConfig]);
   
   const availableFilters = useMemo(() => {
-    if (!activeDataset) return { states: [], categories: {}, numericRanges: {} };
+    if (!activeDataset) return { states: [], categories: {}, numericRanges: {}, industries: [], levels: [], domains: [] };
     
     const stateColumn = activeDataset.columns.find(c => c.isState);
     const states = stateColumn 
@@ -294,8 +342,26 @@ export function useDataset() {
     const categories: Record<string, string[]> = {};
     const numericRanges: Record<string, { min: number; max: number }> = {};
     
+    // Get industries from data or use defaults
+    const industryColumn = activeDataset.columns.find(c => c.isIndustry);
+    const industries = industryColumn 
+      ? (getUniqueValues(activeDataset.data, industryColumn.name) as string[]).filter(s => s)
+      : [...INDUSTRY_CATEGORIES];
+    
+    // Get levels from data or use defaults
+    const levelColumn = activeDataset.columns.find(c => c.isLevel);
+    const levels = levelColumn 
+      ? (getUniqueValues(activeDataset.data, levelColumn.name) as string[]).filter(s => s)
+      : [...AUDIENCE_LEVELS];
+    
+    // Get domains from data or use defaults
+    const domainColumn = activeDataset.columns.find(c => c.isDomain);
+    const domains = domainColumn 
+      ? (getUniqueValues(activeDataset.data, domainColumn.name) as string[]).filter(s => s)
+      : [...DOMAIN_CATEGORIES];
+    
     for (const col of activeDataset.columns) {
-      if (col.type === 'text' && !col.isState && !col.isCity && !col.isZip) {
+      if (col.type === 'text' && !col.isState && !col.isCity && !col.isZip && !col.isIndustry && !col.isLevel && !col.isDomain) {
         const uniqueValues = getUniqueValues(activeDataset.data, col.name) as string[];
         if (uniqueValues.length > 0 && uniqueValues.length <= 50) {
           categories[col.name] = uniqueValues;
@@ -307,7 +373,7 @@ export function useDataset() {
       }
     }
     
-    return { states, categories, numericRanges };
+    return { states, categories, numericRanges, industries, levels, domains };
   }, [activeDataset]);
   
   return {
