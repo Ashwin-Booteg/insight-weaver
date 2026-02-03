@@ -1,6 +1,6 @@
 import React from 'react';
-import { Search, X, Calendar, Factory, Layers, Globe, MapPin, Tag, SlidersHorizontal } from 'lucide-react';
-import { FilterState, DataColumn, INDUSTRY_CATEGORIES, AUDIENCE_LEVELS, DOMAIN_CATEGORIES } from '@/types/analytics';
+import { Search, X, Calendar, Factory, MapPin, Tag, SlidersHorizontal } from 'lucide-react';
+import { FilterState, DataColumn, INDUSTRY_CATEGORIES } from '@/types/analytics';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,8 +9,6 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FilterSection } from '@/components/filters/FilterSection';
 import { IndustryFilter } from '@/components/filters/IndustryFilter';
-import { LevelFilter } from '@/components/filters/LevelFilter';
-import { DomainFilter } from '@/components/filters/DomainFilter';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -33,8 +31,6 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
   const activeFilterCount = 
     filters.states.length + 
     filters.industries.length + 
-    filters.levels.length + 
-    filters.domains.length +
     (filters.searchText ? 1 : 0) + 
     (filters.dateRange.start ? 1 : 0) + 
     (filters.dateRange.end ? 1 : 0) +
@@ -60,8 +56,6 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
   
   // Get available industries from data or use defaults
   const availableIndustries = availableFilters.industries || [...INDUSTRY_CATEGORIES];
-  const availableLevels = availableFilters.levels || [...AUDIENCE_LEVELS];
-  const availableDomains = availableFilters.domains || [...DOMAIN_CATEGORIES];
   
   return (
     <div className="filter-sidebar p-4 space-y-5 h-full overflow-y-auto scrollbar-thin">
@@ -110,32 +104,6 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
           selectedIndustries={filters.industries}
           onChange={(industries) => onFiltersChange({ ...filters, industries })}
           availableIndustries={availableIndustries}
-        />
-      </FilterSection>
-
-      {/* Level Filter */}
-      <FilterSection 
-        title="Audience Level" 
-        icon={<Layers className="w-4 h-4" />}
-        count={filters.levels.length}
-      >
-        <LevelFilter
-          selectedLevels={filters.levels}
-          onChange={(levels) => onFiltersChange({ ...filters, levels })}
-          availableLevels={availableLevels}
-        />
-      </FilterSection>
-
-      {/* Domain Filter */}
-      <FilterSection 
-        title="Domain Type" 
-        icon={<Globe className="w-4 h-4" />}
-        count={filters.domains.length}
-      >
-        <DomainFilter
-          selectedDomains={filters.domains}
-          onChange={(domains) => onFiltersChange({ ...filters, domains })}
-          availableDomains={availableDomains}
         />
       </FilterSection>
       
