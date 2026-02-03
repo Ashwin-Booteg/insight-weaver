@@ -1,15 +1,19 @@
 import React from 'react';
-import { Search, X, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
-import { FilterState, DataColumn } from '@/types/analytics';
+import { Search, X, Calendar, Factory, Layers, Globe, MapPin, Tag, SlidersHorizontal } from 'lucide-react';
+import { FilterState, DataColumn, INDUSTRY_CATEGORIES, AUDIENCE_LEVELS, DOMAIN_CATEGORIES } from '@/types/analytics';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { FilterSection } from '@/components/filters/FilterSection';
+import { IndustryFilter } from '@/components/filters/IndustryFilter';
+import { LevelFilter } from '@/components/filters/LevelFilter';
+import { DomainFilter } from '@/components/filters/DomainFilter';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -18,17 +22,26 @@ interface FilterPanelProps {
     states: string[];
     categories: Record<string, string[]>;
     numericRanges: Record<string, { min: number; max: number }>;
+    industries?: string[];
+    levels?: string[];
+    domains?: string[];
   };
   columns: DataColumn[];
 }
 
 export function FilterPanel({ filters, onFiltersChange, availableFilters, columns }: FilterPanelProps) {
-  const hasFilters = filters.states.length > 0 || 
-    filters.searchText || 
-    filters.dateRange.start || 
-    filters.dateRange.end ||
-    Object.values(filters.categories).some(v => v.length > 0) ||
-    Object.keys(filters.numericRanges).length > 0;
+  const activeFilterCount = 
+    filters.states.length + 
+    filters.industries.length + 
+    filters.levels.length + 
+    filters.domains.length +
+    (filters.searchText ? 1 : 0) + 
+    (filters.dateRange.start ? 1 : 0) + 
+    (filters.dateRange.end ? 1 : 0) +
+    Object.values(filters.categories).reduce((acc, v) => acc + v.length, 0) +
+    Object.keys(filters.numericRanges).length;
+
+  const hasFilters = activeFilterCount > 0;
   
   const clearFilters = () => {
     onFiltersChange({
@@ -36,25 +49,42 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
       dateRange: { start: null, end: null },
       categories: {},
       numericRanges: {},
-      searchText: ''
+      searchText: '',
+      industries: [],
+      levels: [],
+      domains: []
     });
   };
   
   const dateColumn = columns.find(c => c.type === 'date');
   
+  // Get available industries from data or use defaults
+  const availableIndustries = availableFilters.industries || [...INDUSTRY_CATEGORIES];
+  const availableLevels = availableFilters.levels || [...AUDIENCE_LEVELS];
+  const availableDomains = availableFilters.domains || [...DOMAIN_CATEGORIES];
+  
   return (
-    <div className="filter-sidebar p-4 space-y-6 h-full">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-foreground">Filters</h2>
+    <div className="filter-sidebar p-4 space-y-5 h-full overflow-y-auto scrollbar-thin">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-border">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-5 h-5 text-primary" />
+          <h2 className="font-bold text-foreground">Filters</h2>
+          {hasFilters && (
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
+              {activeFilterCount}
+            </Badge>
+          )}
+        </div>
         {hasFilters && (
           <Button
             variant="ghost"
             size="sm"
             onClick={clearFilters}
-            className="text-muted-foreground hover:text-foreground h-8 px-2"
+            className="text-muted-foreground hover:text-destructive h-8 px-2"
           >
             <X className="w-4 h-4 mr-1" />
-            Clear all
+            Clear
           </Button>
         )}
       </div>
@@ -63,19 +93,62 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Search records..."
+          placeholder="Search all records..."
           value={filters.searchText}
           onChange={(e) => onFiltersChange({ ...filters, searchText: e.target.value })}
-          className="pl-9"
+          className="pl-9 bg-muted/50 border-0 focus-visible:ring-primary"
         />
       </div>
+
+      {/* Industry Filter - Primary */}
+      <FilterSection 
+        title="Industry" 
+        icon={<Factory className="w-4 h-4" />}
+        count={filters.industries.length}
+      >
+        <IndustryFilter
+          selectedIndustries={filters.industries}
+          onChange={(industries) => onFiltersChange({ ...filters, industries })}
+          availableIndustries={availableIndustries}
+        />
+      </FilterSection>
+
+      {/* Level Filter */}
+      <FilterSection 
+        title="Audience Level" 
+        icon={<Layers className="w-4 h-4" />}
+        count={filters.levels.length}
+      >
+        <LevelFilter
+          selectedLevels={filters.levels}
+          onChange={(levels) => onFiltersChange({ ...filters, levels })}
+          availableLevels={availableLevels}
+        />
+      </FilterSection>
+
+      {/* Domain Filter */}
+      <FilterSection 
+        title="Domain Type" 
+        icon={<Globe className="w-4 h-4" />}
+        count={filters.domains.length}
+      >
+        <DomainFilter
+          selectedDomains={filters.domains}
+          onChange={(domains) => onFiltersChange({ ...filters, domains })}
+          availableDomains={availableDomains}
+        />
+      </FilterSection>
       
       {/* State Filter */}
       {availableFilters.states.length > 0 && (
-        <FilterSection title="States" count={filters.states.length}>
-          <div className="max-h-48 overflow-y-auto space-y-2 scrollbar-thin">
+        <FilterSection 
+          title="States" 
+          icon={<MapPin className="w-4 h-4" />}
+          count={filters.states.length}
+        >
+          <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin">
             {availableFilters.states.map((state) => (
-              <label key={state} className="flex items-center gap-2 cursor-pointer">
+              <label key={state} className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-muted/50">
                 <Checkbox
                   checked={filters.states.includes(state)}
                   onCheckedChange={(checked) => {
@@ -94,7 +167,7 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
       
       {/* Date Range Filter */}
       {dateColumn && (
-        <FilterSection title="Date Range">
+        <FilterSection title="Date Range" icon={<Calendar className="w-4 h-4" />}>
           <div className="space-y-2">
             <DatePicker
               label="From"
@@ -121,11 +194,13 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
         <FilterSection
           key={columnName}
           title={formatColumnName(columnName)}
+          icon={<Tag className="w-4 h-4" />}
           count={filters.categories[columnName]?.length || 0}
+          defaultOpen={false}
         >
-          <div className="max-h-40 overflow-y-auto space-y-2 scrollbar-thin">
+          <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
             {values.slice(0, 15).map((value) => (
-              <label key={value} className="flex items-center gap-2 cursor-pointer">
+              <label key={value} className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-muted/50">
                 <Checkbox
                   checked={filters.categories[columnName]?.includes(value) || false}
                   onCheckedChange={(checked) => {
@@ -143,7 +218,7 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
               </label>
             ))}
             {values.length > 15 && (
-              <p className="text-xs text-muted-foreground pt-1">
+              <p className="text-xs text-muted-foreground pt-1 pl-6">
                 +{values.length - 15} more
               </p>
             )}
@@ -153,7 +228,11 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
       
       {/* Numeric Range Filters */}
       {Object.entries(availableFilters.numericRanges).slice(0, 3).map(([columnName, range]) => (
-        <FilterSection key={columnName} title={formatColumnName(columnName)}>
+        <FilterSection 
+          key={columnName} 
+          title={formatColumnName(columnName)}
+          defaultOpen={false}
+        >
           <NumericRangeFilter
             min={range.min}
             max={range.max}
@@ -168,39 +247,6 @@ export function FilterPanel({ filters, onFiltersChange, availableFilters, column
         </FilterSection>
       ))}
     </div>
-  );
-}
-
-interface FilterSectionProps {
-  title: string;
-  count?: number;
-  children: React.ReactNode;
-}
-
-function FilterSection({ title, count, children }: FilterSectionProps) {
-  const [isOpen, setIsOpen] = React.useState(true);
-  
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger className="flex items-center justify-between w-full py-1 group">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">{title}</span>
-          {count !== undefined && count > 0 && (
-            <span className="px-1.5 py-0.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-              {count}
-            </span>
-          )}
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        )}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-2">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
 
@@ -248,7 +294,7 @@ interface NumericRangeFilterProps {
 
 function NumericRangeFilter({ min, max, value, onChange }: NumericRangeFilterProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 px-1">
       <Slider
         min={min}
         max={max}
@@ -258,8 +304,8 @@ function NumericRangeFilter({ min, max, value, onChange }: NumericRangeFilterPro
         className="w-full"
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{formatNumber(value.min)}</span>
-        <span>{formatNumber(value.max)}</span>
+        <span className="font-medium">{formatNumber(value.min)}</span>
+        <span className="font-medium">{formatNumber(value.max)}</span>
       </div>
     </div>
   );
