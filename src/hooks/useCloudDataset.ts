@@ -105,6 +105,21 @@ export function useCloudDataset(userId: string | null) {
       // Parse Excel file locally first
       const datasetInfo = await parseExcelFile(file);
 
+      // Slim down columns metadata to reduce payload size (remove sample values)
+      const slimColumns = datasetInfo.columns.map(col => ({
+        name: col.name,
+        type: col.type,
+        isState: col.isState,
+        isCity: col.isCity,
+        isZip: col.isZip,
+        isICP: col.isICP,
+        isCompany: col.isCompany,
+        isStatus: col.isStatus,
+        isIndustry: col.isIndustry,
+        isLevel: col.isLevel,
+        isDomain: col.isDomain
+      }));
+
       // Insert dataset record
       const { data: insertedDataset, error: insertError } = await supabase
         .from('datasets')
@@ -112,12 +127,15 @@ export function useCloudDataset(userId: string | null) {
           user_id: userId,
           file_name: file.name,
           row_count: datasetInfo.rowCount,
-          columns: JSON.parse(JSON.stringify(datasetInfo.columns))
+          columns: slimColumns
         } as any)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Dataset insert error:', insertError);
+        throw insertError;
+      }
 
       // Prepare rows for insertion
       const stateColumn = datasetInfo.columns.find(c => c.isState);
