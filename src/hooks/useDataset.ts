@@ -138,11 +138,49 @@ export function useDataset() {
       });
     }
     
-    // Filter by industries
+    // Filter by industries - use normalized category or smart matching
     if (filters.industries.length > 0 && industryColumn) {
       data = data.filter(row => {
-        const industry = String(row[industryColumn.name] || '');
-        return filters.industries.some(fi => industry.toLowerCase().includes(fi.toLowerCase()));
+        // First check normalized category
+        const normalizedCategory = row[`${industryColumn.name}_category`] as string | null;
+        if (normalizedCategory && filters.industries.includes(normalizedCategory)) {
+          return true;
+        }
+        
+        // Fallback to keyword matching on original value
+        const industryValue = String(row[industryColumn.name] || '').toLowerCase();
+        return filters.industries.some(selectedIndustry => {
+          const category = selectedIndustry.toLowerCase();
+          if (category.includes('movie') || category.includes('entertainment')) {
+            return industryValue.includes('movie') || 
+                   industryValue.includes('film') || 
+                   industryValue.includes('entertainment') ||
+                   industryValue.includes('cinema') ||
+                   industryValue.includes('streaming') ||
+                   industryValue.includes('media') ||
+                   industryValue.includes('tv') ||
+                   industryValue.includes('television') ||
+                   industryValue.includes('video');
+          }
+          if (category.includes('music') || category.includes('audio')) {
+            return industryValue.includes('music') || 
+                   industryValue.includes('audio') || 
+                   industryValue.includes('sound') ||
+                   industryValue.includes('recording') ||
+                   industryValue.includes('podcast') ||
+                   industryValue.includes('radio');
+          }
+          if (category.includes('fashion') || category.includes('apparel')) {
+            return industryValue.includes('fashion') || 
+                   industryValue.includes('apparel') || 
+                   industryValue.includes('clothing') ||
+                   industryValue.includes('textile') ||
+                   industryValue.includes('garment') ||
+                   industryValue.includes('style') ||
+                   industryValue.includes('wear');
+          }
+          return industryValue.includes(category);
+        });
       });
     }
     

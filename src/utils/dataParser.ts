@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { DataColumn, DatasetInfo, US_STATES, STATE_NAME_TO_CODE } from '@/types/analytics';
+import { DataColumn, DatasetInfo, US_STATES, STATE_NAME_TO_CODE, INDUSTRY_CATEGORIES } from '@/types/analytics';
 
 export function parseExcelFile(file: File): Promise<DatasetInfo> {
   return new Promise((resolve, reject) => {
@@ -182,11 +182,68 @@ export function normalizeStateValue(value: unknown): string | null {
   return null;
 }
 
+// Categorize any industry value into one of the 3 main categories
+export function categorizeIndustry(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  
+  const industryValue = String(value).toLowerCase();
+  
+  // Movie & Entertainment keywords
+  if (
+    industryValue.includes('movie') || 
+    industryValue.includes('film') || 
+    industryValue.includes('entertainment') ||
+    industryValue.includes('cinema') ||
+    industryValue.includes('streaming') ||
+    industryValue.includes('media') ||
+    industryValue.includes('tv') ||
+    industryValue.includes('television') ||
+    industryValue.includes('video') ||
+    industryValue.includes('broadcast') ||
+    industryValue.includes('production')
+  ) {
+    return 'Movie & Entertainment';
+  }
+  
+  // Music & Audio keywords
+  if (
+    industryValue.includes('music') || 
+    industryValue.includes('audio') || 
+    industryValue.includes('sound') ||
+    industryValue.includes('recording') ||
+    industryValue.includes('podcast') ||
+    industryValue.includes('radio') ||
+    industryValue.includes('artist') ||
+    industryValue.includes('label') ||
+    industryValue.includes('concert')
+  ) {
+    return 'Music & Audio';
+  }
+  
+  // Fashion & Apparel keywords
+  if (
+    industryValue.includes('fashion') || 
+    industryValue.includes('apparel') || 
+    industryValue.includes('clothing') ||
+    industryValue.includes('textile') ||
+    industryValue.includes('garment') ||
+    industryValue.includes('style') ||
+    industryValue.includes('wear') ||
+    industryValue.includes('boutique') ||
+    industryValue.includes('designer')
+  ) {
+    return 'Fashion & Apparel';
+  }
+  
+  return null; // Doesn't match any category
+}
+
 function normalizeData(
   data: Record<string, unknown>[],
   columns: DataColumn[]
 ): Record<string, unknown>[] {
   const stateColumn = columns.find(c => c.isState);
+  const industryColumn = columns.find(c => c.isIndustry);
   
   return data.map(row => {
     const normalizedRow: Record<string, unknown> = { ...row };
@@ -195,6 +252,12 @@ function normalizeData(
     if (stateColumn) {
       const stateValue = row[stateColumn.name];
       normalizedRow[`${stateColumn.name}_normalized`] = normalizeStateValue(stateValue);
+    }
+    
+    // Normalize industry values to categories
+    if (industryColumn) {
+      const industryValue = row[industryColumn.name];
+      normalizedRow[`${industryColumn.name}_category`] = categorizeIndustry(industryValue);
     }
     
     // Convert numeric strings to numbers
