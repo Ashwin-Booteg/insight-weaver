@@ -73,23 +73,11 @@ export interface ICPRule {
   value: string | number | string[];
 }
 
-// Industry categories for filtering
+// Industry categories for filtering - Limited to core entertainment verticals
 export const INDUSTRY_CATEGORIES = [
   'Movie & Entertainment',
   'Music & Audio',
-  'Fashion & Apparel',
-  'Technology & Software',
-  'Healthcare & Medical',
-  'Finance & Banking',
-  'E-commerce & Retail',
-  'Education & Training',
-  'Food & Beverage',
-  'Travel & Hospitality',
-  'Real Estate',
-  'Marketing & Advertising',
-  'Sports & Fitness',
-  'Gaming & Esports',
-  'Media & Publishing'
+  'Fashion & Apparel'
 ] as const;
 
 // Audience levels for segmentation
