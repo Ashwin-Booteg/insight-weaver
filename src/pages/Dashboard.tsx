@@ -2,25 +2,33 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCloudDataset } from '@/hooks/useCloudDataset';
+import { useGlobalFilters } from '@/hooks/useGlobalFilters';
 import { FileUpload, UploadHistoryList } from '@/components/FileUpload';
-import { KPICards } from '@/components/KPICards';
+import { ExtendedKPICards } from '@/components/ExtendedKPICards';
 import { USAMap, MetricSelector } from '@/components/USAMap';
-import { FilterPanel } from '@/components/FilterPanel';
-import { AutoCharts } from '@/components/AutoCharts';
+import { GlobalFilterBar } from '@/components/filters/GlobalFilterBar';
 import { DataTable } from '@/components/DataTable';
-import { DataSummary } from '@/components/DataSummary';
-import { TopStatesTable } from '@/components/TopStatesTable';
+import { FilteredStateTable, RoleSummaryTable } from '@/components/FilteredStateTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
-import { IndustryBreakdownChart, LevelBreakdownChart } from '@/components/charts/BreakdownCharts';
-import { ActiveFiltersBar } from '@/components/charts/ActiveFiltersBar';
-import { AIInsights } from '@/components/AIInsights';
-import { BarChart3, Map, Table, Upload, PanelLeftClose, PanelLeft, FileSpreadsheet, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw } from 'lucide-react';
+import { FilterAwareAIInsights } from '@/components/FilterAwareAIInsights';
+import {
+  TopStatesChart,
+  BottomStatesChart,
+  RegionIndustryStackedChart,
+  IndustryDonutChart,
+  TopRolesChart,
+  ParetoChart,
+  RoleRegionStackedChart,
+  RegionIndustryHeatmap
+} from '@/components/charts/AdvancedCharts';
+import { BarChart3, Map, Table, Upload, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
 import { User, Session } from '@supabase/supabase-js';
 import { Badge } from '@/components/ui/badge';
+import { StateMetric, US_STATES } from '@/types/analytics';
+import { getRegionFromState } from '@/types/filters';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -35,12 +43,6 @@ const Dashboard = () => {
     uploadFile,
     deleteDataset,
     uploadHistory,
-    filters,
-    setFilters,
-    filteredData,
-    kpiData,
-    stateMetrics,
-    availableFilters,
     icpConfig,
     setICPConfig,
     isLoading,
@@ -51,60 +53,52 @@ const Dashboard = () => {
   
   const [mapMetricType, setMapMetricType] = useState<'count' | 'percentage' | 'icp'>('count');
   const [selectedState, setSelectedState] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Build active filters list for display
-  const activeFiltersList = useMemo(() => {
-    const list: { type: 'industry' | 'level' | 'domain' | 'state' | 'category'; value: string }[] = [];
-    
-    filters.industries.forEach(i => list.push({ type: 'industry', value: i }));
-    filters.levels.forEach(l => list.push({ type: 'level', value: l }));
-    filters.domains.forEach(d => list.push({ type: 'domain', value: d }));
-    filters.states.forEach(s => list.push({ type: 'state', value: s }));
-    Object.entries(filters.categories).forEach(([_, values]) => {
-      values.forEach(v => list.push({ type: 'category', value: v }));
-    });
-    
-    return list;
-  }, [filters]);
+  // Use global filters hook
+  const {
+    filters: globalFilters,
+    setStates,
+    setRegions,
+    setSelectedRoles,
+    setSelectedIndustries,
+    setIndustryFilterMode,
+    selectTop20Roles,
+    selectAllStates,
+    clearAllFilters,
+    effectiveSelectedStates,
+    effectiveSelectedRoles,
+    availableStates,
+    roleMetadata,
+    rolesByIndustry,
+    top20Roles,
+    filteredData,
+    extendedKPIs,
+    stateSummaries,
+    regionIndustryData,
+    paretoData,
+    roleRegionData
+  } = useGlobalFilters({
+    data: activeDataset?.data || [],
+    columns: activeDataset?.columns || []
+  });
 
-  const handleRemoveFilter = (filter: { type: string; value: string }) => {
-    switch (filter.type) {
-      case 'industry':
-        setFilters({ ...filters, industries: filters.industries.filter(i => i !== filter.value) });
-        break;
-      case 'level':
-        setFilters({ ...filters, levels: filters.levels.filter(l => l !== filter.value) });
-        break;
-      case 'domain':
-        setFilters({ ...filters, domains: filters.domains.filter(d => d !== filter.value) });
-        break;
-      case 'state':
-        setFilters({ ...filters, states: filters.states.filter(s => s !== filter.value) });
-        break;
-      case 'category':
-        const newCategories = { ...filters.categories };
-        Object.keys(newCategories).forEach(key => {
-          newCategories[key] = newCategories[key].filter(v => v !== filter.value);
-        });
-        setFilters({ ...filters, categories: newCategories });
-        break;
-    }
-  };
-
-  const handleClearAllFilters = () => {
-    setFilters({
-      states: [],
-      dateRange: { start: null, end: null },
-      categories: {},
-      numericRanges: {},
-      searchText: '',
-      industries: [],
-      levels: [],
-      domains: []
-    });
-  };
+  // Compute state metrics for map (based on filtered data)
+  const stateMetrics: StateMetric[] = useMemo(() => {
+    if (!extendedKPIs.stateBreakdown) return [];
+    
+    const total = extendedKPIs.totalPeople;
+    return Object.entries(extendedKPIs.stateBreakdown)
+      .map(([stateCode, count]) => ({
+        stateCode,
+        stateName: US_STATES[stateCode] || stateCode,
+        value: count,
+        percentage: total > 0 ? (count / total) * 100 : 0,
+        icpCount: 0,
+        companyCount: 0
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [extendedKPIs]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -138,7 +132,7 @@ const Dashboard = () => {
   };
   
   const handleFilterToState = (stateCode: string) => {
-    setFilters({ ...filters, states: [stateCode] });
+    setStates([stateCode]);
     setSelectedState(null);
   };
   
@@ -197,125 +191,102 @@ const Dashboard = () => {
   }
   
   return (
-    <div className="dashboard-layout flex min-h-screen">
-      {/* Filter Sidebar */}
-      <aside className={cn(
-        'w-80 shrink-0 border-r border-border transition-all duration-300 bg-card',
-        !showFilters && 'w-0 overflow-hidden'
-      )}>
-        {showFilters && (
-          <FilterPanel
-            filters={filters}
-            onFiltersChange={setFilters}
-            availableFilters={availableFilters}
-            columns={activeDataset.columns}
-          />
-        )}
-      </aside>
-      
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowFilters(!showFilters)}
-                className="shrink-0"
-              >
-                {showFilters ? (
-                  <PanelLeftClose className="w-5 h-5" />
-                ) : (
-                  <PanelLeft className="w-5 h-5" />
-                )}
-              </Button>
-              
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-chart-purple rounded-xl flex items-center justify-center shadow-lg">
-                  <BarChart3 className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-black text-foreground">
-                    <span className="text-primary">Starzopp</span> ICP Bank
-                  </h1>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      {activeDataset.fileName} • {filteredData.length.toLocaleString()} of {activeDataset.rowCount.toLocaleString()} records
-                    </p>
-                    {isSyncing && (
-                      <Badge variant="outline" className="gap-1 text-xs">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        Syncing
-                      </Badge>
-                    )}
-                    {!isSyncing && (
-                      <Badge variant="outline" className="gap-1 text-xs text-chart-teal border-chart-teal/30">
-                        <Cloud className="w-3 h-3" />
-                        Cloud
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
+    <div className="dashboard-layout flex flex-col min-h-screen">
+      {/* Header */}
+      <header className="bg-card border-b border-border px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-chart-purple rounded-xl flex items-center justify-center shadow-lg">
+              <BarChart3 className="w-5 h-5 text-white" />
             </div>
-            
-            <div className="flex items-center gap-2">
-              <ICPConfigDialog
-                config={icpConfig}
-                onConfigChange={setICPConfig}
-                columns={activeDataset.columns}
-              />
-              
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) await uploadFile(file);
-                    e.target.value = '';
-                  }}
-                />
-                <Button variant="outline" size="sm" asChild>
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    New File
-                  </span>
-                </Button>
-              </label>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
+            <div>
+              <h1 className="text-lg font-black text-foreground">
+                <span className="text-primary">Starzopp</span> ICP Bank
+              </h1>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {activeDataset.fileName} • {filteredData.length.toLocaleString()} records
+                </p>
+                {isSyncing && (
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Syncing
+                  </Badge>
+                )}
+                {!isSyncing && (
+                  <Badge variant="outline" className="gap-1 text-xs text-chart-teal border-chart-teal/30">
+                    <Cloud className="w-3 h-3" />
+                    Cloud
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
           
-          {/* Active Filters Bar */}
-          {activeFiltersList.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <ActiveFiltersBar
-                filters={activeFiltersList}
-                onRemove={handleRemoveFilter}
-                onClearAll={handleClearAllFilters}
+          <div className="flex items-center gap-2">
+            <ICPConfigDialog
+              config={icpConfig}
+              onConfigChange={setICPConfig}
+              columns={activeDataset.columns}
+            />
+            
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) await uploadFile(file);
+                  e.target.value = '';
+                }}
               />
-            </div>
-          )}
-        </header>
-        
-        {/* Dashboard Content */}
-        <div className="dashboard-main flex-1 overflow-y-auto scrollbar-thin">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Upload className="w-4 h-4 mr-2" />
+                  New File
+                </span>
+              </Button>
+            </label>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Global Filter Bar */}
+      <GlobalFilterBar
+        filters={globalFilters}
+        availableStates={availableStates}
+        roleMetadata={roleMetadata}
+        rolesByIndustry={rolesByIndustry}
+        top20Roles={top20Roles}
+        effectiveSelectedStates={effectiveSelectedStates}
+        effectiveSelectedRoles={effectiveSelectedRoles}
+        onStatesChange={setStates}
+        onRegionsChange={setRegions}
+        onRolesChange={setSelectedRoles}
+        onIndustriesChange={setSelectedIndustries}
+        onIndustryModeChange={setIndustryFilterMode}
+        onSelectTop20Roles={selectTop20Roles}
+        onSelectAllStates={selectAllStates}
+        onClearAll={clearAllFilters}
+      />
+      
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="dashboard-main">
           {/* KPI Cards */}
           <section className="mb-6">
-            <KPICards data={kpiData} />
+            <ExtendedKPICards data={extendedKPIs} />
           </section>
           
           {/* Main Visualization Tabs */}
@@ -323,28 +294,24 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-4 mb-4">
               <TabsList className="bg-muted/50">
                 <TabsTrigger value="overview" className="gap-2">
-                  <TrendingUp className="w-4 h-4" />
+                  <LayoutGrid className="w-4 h-4" />
                   Overview
-                </TabsTrigger>
-                <TabsTrigger value="ai-insights" className="gap-2">
-                  <Brain className="w-4 h-4" />
-                  AI Insights
                 </TabsTrigger>
                 <TabsTrigger value="charts" className="gap-2">
                   <PieChart className="w-4 h-4" />
-                  Analytics
+                  Charts
                 </TabsTrigger>
                 <TabsTrigger value="map" className="gap-2">
                   <Map className="w-4 h-4" />
                   Geographic
                 </TabsTrigger>
-                <TabsTrigger value="summary" className="gap-2">
-                  <FileSpreadsheet className="w-4 h-4" />
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger value="table" className="gap-2">
+                <TabsTrigger value="tables" className="gap-2">
                   <Table className="w-4 h-4" />
-                  Data
+                  Tables
+                </TabsTrigger>
+                <TabsTrigger value="ai-insights" className="gap-2">
+                  <Brain className="w-4 h-4" />
+                  AI Insights
                 </TabsTrigger>
               </TabsList>
               
@@ -353,64 +320,38 @@ const Dashboard = () => {
               )}
             </div>
             
-            {/* Overview Tab - Main Dashboard */}
+            {/* Overview Tab */}
             <TabsContent value="overview" className="mt-0 space-y-6">
-              {/* Quick Charts Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {/* Industry Breakdown */}
-                {kpiData.industryBreakdown && (
-                  <IndustryBreakdownChart data={kpiData.industryBreakdown} />
-                )}
-                
-                {/* Level Breakdown */}
-                {kpiData.levelBreakdown && (
-                  <LevelBreakdownChart data={kpiData.levelBreakdown} />
-                )}
-                
-                {/* Top States Quick View */}
-                <div className="chart-container">
-                  <h3 className="text-sm font-bold text-foreground mb-4">Top Regions</h3>
-                  <TopStatesTable
-                    stateMetrics={stateMetrics}
-                    onStateClick={handleStateClick}
-                    selectedState={selectedState}
-                    limit={5}
-                  />
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TopStatesChart kpiData={extendedKPIs} onStateClick={handleStateClick} />
+                <IndustryDonutChart data={extendedKPIs.industryBreakdown} />
               </div>
               
-              {/* Main Charts */}
-              <AutoCharts data={filteredData} columns={activeDataset.columns} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RegionIndustryStackedChart data={regionIndustryData} />
+                <RegionIndustryHeatmap data={regionIndustryData} />
+              </div>
+
+              <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} />
+            </TabsContent>
+            
+            {/* Charts Tab */}
+            <TabsContent value="charts" className="mt-0 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TopStatesChart kpiData={extendedKPIs} onStateClick={handleStateClick} />
+                <BottomStatesChart kpiData={extendedKPIs} />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RegionIndustryStackedChart data={regionIndustryData} />
+                <IndustryDonutChart data={extendedKPIs.industryBreakdown} />
+              </div>
+
+              <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} />
               
-              {/* Data Table Preview */}
-              <section>
-                <h2 className="text-lg font-bold text-foreground mb-4">Recent Records</h2>
-                <DataTable data={filteredData.slice(0, 10)} columns={activeDataset.columns} />
-              </section>
-            </TabsContent>
-            
-            {/* AI Insights Tab */}
-            <TabsContent value="ai-insights" className="mt-0">
-              <AIInsights
-                datasetId={activeDatasetId}
-                dataSample={filteredData}
-                filters={{
-                  industries: filters.industries,
-                  states: filters.states
-                }}
-                kpis={{
-                  totalRecords: kpiData.totalRecords,
-                  totalICP: kpiData.totalICP,
-                  stateCount: kpiData.stateCount,
-                  industryBreakdown: kpiData.industryBreakdown,
-                  levelBreakdown: kpiData.levelBreakdown
-                }}
-              />
-            </TabsContent>
-            
-            {/* Charts Tab - Full Analytics */}
-            <TabsContent value="charts" className="mt-0">
-              <AutoCharts data={filteredData} columns={activeDataset.columns} />
+              <ParetoChart data={paretoData} />
+
+              <RoleRegionStackedChart data={roleRegionData} />
             </TabsContent>
             
             {/* Map Tab */}
@@ -418,7 +359,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 chart-container">
                   <h3 className="text-sm font-bold text-foreground mb-4">
-                    USA Distribution by {mapMetricType === 'count' ? 'Record Count' : mapMetricType === 'percentage' ? '% of Total' : 'ICP Count'}
+                    USA Distribution by {mapMetricType === 'count' ? 'People Count' : mapMetricType === 'percentage' ? '% of Total' : 'ICP Count'}
                   </h3>
                   <USAMap
                     stateMetrics={stateMetrics}
@@ -428,23 +369,55 @@ const Dashboard = () => {
                   />
                 </div>
                 
-                <TopStatesTable
-                  stateMetrics={stateMetrics}
-                  onStateClick={handleStateClick}
-                  selectedState={selectedState}
-                  limit={10}
-                />
+                <div className="chart-container">
+                  <h3 className="text-sm font-bold text-foreground mb-4">Top States</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {stateMetrics.slice(0, 15).map((state, idx) => (
+                      <button
+                        key={state.stateCode}
+                        onClick={() => handleStateClick(state.stateCode)}
+                        className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground w-5">{idx + 1}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{state.stateName}</p>
+                          <p className="text-xs text-muted-foreground">{state.stateCode}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold">{state.value.toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">{state.percentage.toFixed(1)}%</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </TabsContent>
             
-            {/* Summary Tab */}
-            <TabsContent value="summary" className="mt-0">
-              <DataSummary data={filteredData} columns={activeDataset.columns} />
+            {/* Tables Tab */}
+            <TabsContent value="tables" className="mt-0 space-y-6">
+              <FilteredStateTable
+                stateSummaries={stateSummaries}
+                roleMetadata={roleMetadata}
+                totalPeople={extendedKPIs.totalPeople}
+                onStateClick={handleStateClick}
+              />
+              
+              <RoleSummaryTable
+                roleMetadata={roleMetadata}
+                roleBreakdown={extendedKPIs.roleBreakdown}
+              />
             </TabsContent>
             
-            {/* Table Tab */}
-            <TabsContent value="table" className="mt-0">
-              <DataTable data={filteredData} columns={activeDataset.columns} />
+            {/* AI Insights Tab */}
+            <TabsContent value="ai-insights" className="mt-0">
+              <FilterAwareAIInsights
+                datasetId={activeDatasetId}
+                filters={globalFilters}
+                kpis={extendedKPIs}
+                effectiveStates={effectiveSelectedStates}
+                effectiveRoles={effectiveSelectedRoles}
+              />
             </TabsContent>
           </Tabs>
         </div>
