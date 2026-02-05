@@ -22,6 +22,7 @@ import {
   RoleRegionStackedChart,
   RegionIndustryHeatmap
 } from '@/components/charts/AdvancedCharts';
+import { SunburstChart } from '@/components/charts/SunburstChart';
 import { BarChart3, Map, Table, Upload, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -327,6 +328,12 @@ const Dashboard = () => {
                 <IndustryDonutChart data={extendedKPIs.industryBreakdown} />
               </div>
               
+              {/* Sunburst Hierarchical Chart */}
+              <SunburstChart 
+                stateBreakdown={extendedKPIs.stateBreakdown}
+                roleBreakdown={extendedKPIs.roleBreakdown}
+              />
+              
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <RegionIndustryStackedChart data={regionIndustryData} />
                 <RegionIndustryHeatmap data={regionIndustryData} />
@@ -350,6 +357,12 @@ const Dashboard = () => {
               <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} />
               
               <ParetoChart data={paretoData} />
+
+              {/* Sunburst Hierarchical Chart */}
+              <SunburstChart 
+                stateBreakdown={extendedKPIs.stateBreakdown}
+                roleBreakdown={extendedKPIs.roleBreakdown}
+              />
 
               <RoleRegionStackedChart data={roleRegionData} />
             </TabsContent>
