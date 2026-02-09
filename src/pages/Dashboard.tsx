@@ -130,7 +130,7 @@ const Dashboard = () => {
         try {
           const response = await fetch('/data/estimated_music_roles_by_state.xlsx');
           const blob = await response.blob();
-          const file = new File([blob], 'estimated_music_roles_by_state.xlsx', {
+          const file = new File([blob], 'US_Creative_Industry_Approximations_By_State_2.xlsx', {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           });
           await uploadFile(file);
