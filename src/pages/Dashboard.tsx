@@ -123,6 +123,25 @@ const Dashboard = () => {
     }
   }, [authLoading, user, navigate]);
 
+  // Auto-load bundled dataset if no datasets exist
+  useEffect(() => {
+    if (!authLoading && user && !activeDataset && !isLoading && !isSyncing && uploadHistory.length === 0) {
+      const loadBundledData = async () => {
+        try {
+          const response = await fetch('/data/estimated_music_roles_by_state.xlsx');
+          const blob = await response.blob();
+          const file = new File([blob], 'estimated_music_roles_by_state.xlsx', {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          });
+          await uploadFile(file);
+        } catch (err) {
+          console.error('Failed to auto-load bundled dataset:', err);
+        }
+      };
+      loadBundledData();
+    }
+  }, [authLoading, user, activeDataset, isLoading, isSyncing, uploadHistory.length]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/auth');
