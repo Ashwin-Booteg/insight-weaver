@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Home } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ChevronLeft, Home, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   RegionName, 
@@ -23,8 +24,9 @@ interface SunburstNode {
 interface SunburstChartProps {
   stateBreakdown: Record<string, number>;
   roleBreakdown: Record<string, number>;
-  // Optional: per-state role data if available
   stateRoleData?: Record<string, Record<string, number>>;
+  onRegionFilter?: (region: RegionName) => void;
+  onStateFilter?: (stateCode: string) => void;
   className?: string;
 }
 
@@ -59,6 +61,8 @@ export function SunburstChart({
   stateBreakdown, 
   roleBreakdown,
   stateRoleData,
+  onRegionFilter,
+  onStateFilter,
   className 
 }: SunburstChartProps) {
   const [drillPath, setDrillPath] = useState<string[]>([]);
@@ -168,6 +172,14 @@ export function SunburstChart({
     if (node.data.children && node.data.children.length > 0) {
       setDrillPath([...drillPath, node.data.id]);
       setActiveNode(node.data);
+    }
+    // Also trigger filter callbacks
+    const nodeId = node.data.id as string;
+    const regions = Object.keys(US_REGIONS) as RegionName[];
+    if (regions.includes(nodeId as RegionName)) {
+      onRegionFilter?.(nodeId as RegionName);
+    } else if (US_STATES[nodeId]) {
+      onStateFilter?.(nodeId);
     }
   };
 
@@ -314,9 +326,8 @@ export function SunburstChart({
           </div>
         )}
 
-        {/* Instructions */}
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Click on any segment to drill down • Use Back to navigate up
+          Click on any segment to drill down & filter • Use Back to navigate up
         </p>
       </CardContent>
     </Card>

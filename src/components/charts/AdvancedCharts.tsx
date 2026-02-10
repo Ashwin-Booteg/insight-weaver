@@ -22,10 +22,13 @@ import {
   StateSummary,
   ExtendedKPIData,
   RegionName,
-  IndustryCategory
+  IndustryCategory,
+  GlobalFilterState
 } from '@/types/filters';
 import { US_STATES } from '@/types/analytics';
 import { cn } from '@/lib/utils';
+import { Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const REGION_COLORS: Record<RegionName, string> = {
   Northeast: 'hsl(172, 66%, 50%)',
@@ -44,12 +47,21 @@ interface ChartCardProps {
   title: string;
   children: React.ReactNode;
   className?: string;
+  activeFilters?: string[];
 }
 
-function ChartCard({ title, children, className }: ChartCardProps) {
+function ChartCard({ title, children, className, activeFilters }: ChartCardProps) {
   return (
     <div className={cn('chart-container', className)}>
-      <h3 className="text-sm font-bold text-foreground mb-4">{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
+        {activeFilters && activeFilters.length > 0 && (
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <Filter className="w-3 h-3" />
+            {activeFilters.join(', ')}
+          </Badge>
+        )}
+      </div>
       {children}
     </div>
   );
@@ -59,9 +71,10 @@ function ChartCard({ title, children, className }: ChartCardProps) {
 interface TopStatesChartProps {
   kpiData: ExtendedKPIData;
   onStateClick?: (stateCode: string) => void;
+  activeFilters?: string[];
 }
 
-export function TopStatesChart({ kpiData, onStateClick }: TopStatesChartProps) {
+export function TopStatesChart({ kpiData, onStateClick, activeFilters }: TopStatesChartProps) {
   const data = Object.entries(kpiData.stateBreakdown)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
@@ -72,7 +85,7 @@ export function TopStatesChart({ kpiData, onStateClick }: TopStatesChartProps) {
     }));
 
   return (
-    <ChartCard title="Top 10 States by People">
+    <ChartCard title="Top 10 States by People" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
           <defs>
@@ -111,7 +124,7 @@ export function TopStatesChart({ kpiData, onStateClick }: TopStatesChartProps) {
 }
 
 // Bottom 10 States Bar Chart
-export function BottomStatesChart({ kpiData }: TopStatesChartProps) {
+export function BottomStatesChart({ kpiData, onStateClick, activeFilters }: TopStatesChartProps) {
   const allStates = Object.entries(kpiData.stateBreakdown)
     .sort((a, b) => a[1] - b[1]);
   
@@ -124,7 +137,7 @@ export function BottomStatesChart({ kpiData }: TopStatesChartProps) {
     }));
 
   return (
-    <ChartCard title="Bottom 10 States by People">
+    <ChartCard title="Bottom 10 States by People" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -147,6 +160,8 @@ export function BottomStatesChart({ kpiData }: TopStatesChartProps) {
             dataKey="count" 
             fill="hsl(340, 82%, 52%)" 
             radius={[0, 8, 8, 0]}
+            onClick={(data) => onStateClick?.(data.state)}
+            className="cursor-pointer"
           />
         </BarChart>
       </ResponsiveContainer>
@@ -157,13 +172,20 @@ export function BottomStatesChart({ kpiData }: TopStatesChartProps) {
 // Region × Industry Stacked Bar Chart
 interface RegionIndustryChartProps {
   data: RegionIndustryData[];
+  onRegionClick?: (region: RegionName) => void;
+  onIndustryClick?: (industry: IndustryCategory) => void;
+  activeFilters?: string[];
 }
 
-export function RegionIndustryStackedChart({ data }: RegionIndustryChartProps) {
+export function RegionIndustryStackedChart({ data, onRegionClick, activeFilters }: RegionIndustryChartProps) {
   return (
-    <ChartCard title="Region Totals by Industry">
+    <ChartCard title="Region Totals by Industry" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} onClick={(e) => {
+          if (e?.activePayload?.[0]) {
+            onRegionClick?.(e.activePayload[0].payload.region);
+          }
+        }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="region" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
@@ -188,9 +210,11 @@ export function RegionIndustryStackedChart({ data }: RegionIndustryChartProps) {
 // Industry Donut Chart
 interface IndustryDonutChartProps {
   data: Record<IndustryCategory, number>;
+  onIndustryClick?: (industry: IndustryCategory) => void;
+  activeFilters?: string[];
 }
 
-export function IndustryDonutChart({ data }: IndustryDonutChartProps) {
+export function IndustryDonutChart({ data, onIndustryClick, activeFilters }: IndustryDonutChartProps) {
   const chartData = Object.entries(data).map(([name, value]) => ({
     name,
     value
@@ -199,7 +223,7 @@ export function IndustryDonutChart({ data }: IndustryDonutChartProps) {
   const total = chartData.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <ChartCard title="Share of People by Industry">
+    <ChartCard title="Share of People by Industry" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
           <Pie
@@ -215,7 +239,9 @@ export function IndustryDonutChart({ data }: IndustryDonutChartProps) {
             {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
-                fill={INDUSTRY_COLORS[entry.name as IndustryCategory]} 
+                fill={INDUSTRY_COLORS[entry.name as IndustryCategory]}
+                className="cursor-pointer"
+                onClick={() => onIndustryClick?.(entry.name as IndustryCategory)}
               />
             ))}
           </Pie>
@@ -237,9 +263,11 @@ export function IndustryDonutChart({ data }: IndustryDonutChartProps) {
 // Top 15 Roles Horizontal Bar Chart
 interface TopRolesChartProps {
   roleBreakdown: Record<string, number>;
+  onRoleClick?: (role: string) => void;
+  activeFilters?: string[];
 }
 
-export function TopRolesChart({ roleBreakdown }: TopRolesChartProps) {
+export function TopRolesChart({ roleBreakdown, onRoleClick, activeFilters }: TopRolesChartProps) {
   const data = Object.entries(roleBreakdown)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 15)
@@ -250,7 +278,7 @@ export function TopRolesChart({ roleBreakdown }: TopRolesChartProps) {
     }));
 
   return (
-    <ChartCard title="Top 15 Roles by People" className="col-span-full">
+    <ChartCard title="Top 15 Roles by People" className="col-span-full" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={400}>
         <BarChart data={data} layout="vertical" margin={{ left: 20, right: 30 }}>
           <defs>
@@ -282,6 +310,8 @@ export function TopRolesChart({ roleBreakdown }: TopRolesChartProps) {
             dataKey="count" 
             fill="url(#roleGradient)" 
             radius={[0, 6, 6, 0]}
+            onClick={(data) => onRoleClick?.(data.fullRole)}
+            className="cursor-pointer"
           />
         </BarChart>
       </ResponsiveContainer>
@@ -292,9 +322,11 @@ export function TopRolesChart({ roleBreakdown }: TopRolesChartProps) {
 // Pareto Chart (80/20 Rule)
 interface ParetoChartProps {
   data: ParetoDataPoint[];
+  onRoleClick?: (role: string) => void;
+  activeFilters?: string[];
 }
 
-export function ParetoChart({ data }: ParetoChartProps) {
+export function ParetoChart({ data, onRoleClick, activeFilters }: ParetoChartProps) {
   // Take top 20 roles for clarity
   const chartData = data.slice(0, 20).map(d => ({
     ...d,
@@ -302,7 +334,7 @@ export function ParetoChart({ data }: ParetoChartProps) {
   }));
 
   return (
-    <ChartCard title="Pareto Analysis (80/20 Rule)" className="col-span-full">
+    <ChartCard title="Pareto Analysis (80/20 Rule)" className="col-span-full" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -339,6 +371,17 @@ export function ParetoChart({ data }: ParetoChartProps) {
             name="People"
             fill="hsl(243, 75%, 59%)" 
             radius={[4, 4, 0, 0]}
+            onClick={(data) => {
+              // Find original full role name from paretoData
+              const original = data?.role;
+              if (original) {
+                const fullRole = data.role.endsWith('...') 
+                  ? (data as any)._originalRole || original
+                  : original;
+                onRoleClick?.(fullRole);
+              }
+            }}
+            className="cursor-pointer"
           />
           <Line
             yAxisId="right"
@@ -368,18 +411,26 @@ export function ParetoChart({ data }: ParetoChartProps) {
 // Role × Region Stacked Bar Chart
 interface RoleRegionChartProps {
   data: RoleRegionData[];
+  onRoleClick?: (role: string) => void;
+  activeFilters?: string[];
 }
 
-export function RoleRegionStackedChart({ data }: RoleRegionChartProps) {
+export function RoleRegionStackedChart({ data, onRoleClick, activeFilters }: RoleRegionChartProps) {
   const chartData = data.map(d => ({
     ...d,
     role: d.role.length > 20 ? d.role.slice(0, 20) + '...' : d.role
   }));
 
   return (
-    <ChartCard title="Top 10 Roles by Region Distribution" className="col-span-full">
+    <ChartCard title="Top 10 Roles by Region Distribution" className="col-span-full" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={350}>
-        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
+        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 50 }} onClick={(e) => {
+          if (e?.activePayload?.[0]) {
+            const role = e.activePayload[0].payload.role;
+            const original = data.find(d => d.role === role || d.role.startsWith(role.replace('...', '')));
+            onRoleClick?.(original?.role || role);
+          }
+        }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis 
             dataKey="role" 
@@ -408,7 +459,7 @@ export function RoleRegionStackedChart({ data }: RoleRegionChartProps) {
 }
 
 // Region × Industry Heatmap
-export function RegionIndustryHeatmap({ data }: RegionIndustryChartProps) {
+export function RegionIndustryHeatmap({ data, onRegionClick, onIndustryClick, activeFilters }: RegionIndustryChartProps) {
   const industries: IndustryCategory[] = ['Movie & Entertainment', 'Music & Audio', 'Fashion & Apparel'];
   
   // Find max value for color scaling
@@ -419,7 +470,7 @@ export function RegionIndustryHeatmap({ data }: RegionIndustryChartProps) {
   };
 
   return (
-    <ChartCard title="Region × Industry Heatmap">
+    <ChartCard title="Region × Industry Heatmap" activeFilters={activeFilters}>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -440,11 +491,15 @@ export function RegionIndustryHeatmap({ data }: RegionIndustryChartProps) {
                 {industries.map(industry => (
                   <td key={industry} className="p-1">
                     <div 
-                      className="p-2 rounded-lg text-center text-sm font-medium transition-colors"
+                      className="p-2 rounded-lg text-center text-sm font-medium transition-colors cursor-pointer hover:ring-2 hover:ring-primary/50"
                       style={{
                         backgroundColor: INDUSTRY_COLORS[industry],
                         opacity: getOpacity(row[industry]),
                         color: 'white'
+                      }}
+                      onClick={() => {
+                        onRegionClick?.(row.region);
+                        onIndustryClick?.(industry);
                       }}
                     >
                       {row[industry].toLocaleString()}

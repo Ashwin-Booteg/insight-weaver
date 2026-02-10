@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, Session } from '@supabase/supabase-js';
 import { Badge } from '@/components/ui/badge';
 import { StateMetric, US_STATES } from '@/types/analytics';
-import { getRegionFromState } from '@/types/filters';
+import { getRegionFromState, RegionName, IndustryCategory } from '@/types/filters';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -155,6 +155,33 @@ const Dashboard = () => {
     setStates([stateCode]);
     setSelectedState(null);
   };
+
+  // Chart click-to-filter handlers
+  const handleChartStateClick = (stateCode: string) => {
+    setStates([stateCode]);
+  };
+
+  const handleChartIndustryClick = (industry: IndustryCategory) => {
+    setSelectedIndustries([industry]);
+  };
+
+  const handleChartRegionClick = (region: RegionName) => {
+    setRegions([region]);
+  };
+
+  const handleChartRoleClick = (role: string) => {
+    setSelectedRoles([role]);
+  };
+
+  // Compute active filter labels for chart badges
+  const activeFilterLabels = useMemo(() => {
+    const labels: string[] = [];
+    if (globalFilters.states.length > 0) labels.push(`${globalFilters.states.length} state${globalFilters.states.length > 1 ? 's' : ''}`);
+    if (globalFilters.regions.length > 0) labels.push(`${globalFilters.regions.length} region${globalFilters.regions.length > 1 ? 's' : ''}`);
+    if (globalFilters.selectedIndustries.length > 0) labels.push(`${globalFilters.selectedIndustries.length} industry`);
+    if (globalFilters.selectedRoles.length > 0) labels.push(`${globalFilters.selectedRoles.length} role${globalFilters.selectedRoles.length > 1 ? 's' : ''}`);
+    return labels;
+  }, [globalFilters]);
   
   const selectedStateMetric = stateMetrics.find(s => s.stateCode === selectedState);
 
@@ -343,47 +370,51 @@ const Dashboard = () => {
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-0 space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <TopStatesChart kpiData={extendedKPIs} onStateClick={handleStateClick} />
-                <IndustryDonutChart data={extendedKPIs.industryBreakdown} />
+                <TopStatesChart kpiData={extendedKPIs} onStateClick={handleChartStateClick} activeFilters={activeFilterLabels} />
+                <IndustryDonutChart data={extendedKPIs.industryBreakdown} onIndustryClick={handleChartIndustryClick} activeFilters={activeFilterLabels} />
               </div>
               
               {/* Sunburst Hierarchical Chart */}
               <SunburstChart 
                 stateBreakdown={extendedKPIs.stateBreakdown}
                 roleBreakdown={extendedKPIs.roleBreakdown}
+                onRegionFilter={handleChartRegionClick}
+                onStateFilter={handleChartStateClick}
               />
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RegionIndustryStackedChart data={regionIndustryData} />
-                <RegionIndustryHeatmap data={regionIndustryData} />
+                <RegionIndustryStackedChart data={regionIndustryData} onRegionClick={handleChartRegionClick} activeFilters={activeFilterLabels} />
+                <RegionIndustryHeatmap data={regionIndustryData} onRegionClick={handleChartRegionClick} onIndustryClick={handleChartIndustryClick} activeFilters={activeFilterLabels} />
               </div>
 
-              <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} />
+              <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
             </TabsContent>
             
             {/* Charts Tab */}
             <TabsContent value="charts" className="mt-0 space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <TopStatesChart kpiData={extendedKPIs} onStateClick={handleStateClick} />
-                <BottomStatesChart kpiData={extendedKPIs} />
+                <TopStatesChart kpiData={extendedKPIs} onStateClick={handleChartStateClick} activeFilters={activeFilterLabels} />
+                <BottomStatesChart kpiData={extendedKPIs} onStateClick={handleChartStateClick} activeFilters={activeFilterLabels} />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RegionIndustryStackedChart data={regionIndustryData} />
-                <IndustryDonutChart data={extendedKPIs.industryBreakdown} />
+                <RegionIndustryStackedChart data={regionIndustryData} onRegionClick={handleChartRegionClick} activeFilters={activeFilterLabels} />
+                <IndustryDonutChart data={extendedKPIs.industryBreakdown} onIndustryClick={handleChartIndustryClick} activeFilters={activeFilterLabels} />
               </div>
 
-              <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} />
+              <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
               
-              <ParetoChart data={paretoData} />
+              <ParetoChart data={paretoData} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
 
               {/* Sunburst Hierarchical Chart */}
               <SunburstChart 
                 stateBreakdown={extendedKPIs.stateBreakdown}
                 roleBreakdown={extendedKPIs.roleBreakdown}
+                onRegionFilter={handleChartRegionClick}
+                onStateFilter={handleChartStateClick}
               />
 
-              <RoleRegionStackedChart data={roleRegionData} />
+              <RoleRegionStackedChart data={roleRegionData} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
             </TabsContent>
             
             {/* Map Tab */}
