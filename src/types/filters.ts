@@ -1,14 +1,13 @@
 // Global Filter Types for Wide-Format Data Analytics
+// Now supports dynamic geography via GeographyProfile
 
-// US Census Regions
-export const US_REGIONS = {
-  Northeast: ['CT', 'ME', 'MA', 'NH', 'RI', 'VT', 'NJ', 'NY', 'PA'],
-  Midwest: ['IL', 'IN', 'MI', 'OH', 'WI', 'IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
-  South: ['DE', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'DC', 'WV', 'AL', 'KY', 'MS', 'TN', 'AR', 'LA', 'OK', 'TX'],
-  West: ['AZ', 'CO', 'ID', 'MT', 'NV', 'NM', 'UT', 'WY', 'AK', 'CA', 'HI', 'OR', 'WA']
-} as const;
+import { GeographyProfile, GEOGRAPHY_PROFILES, getRegionFromLocation, getLocationsFromRegions as geoGetLocationsFromRegions } from './geography';
 
-export type RegionName = keyof typeof US_REGIONS;
+// Re-export US_REGIONS for backward compat (but prefer profile.regions)
+export const US_REGIONS = GEOGRAPHY_PROFILES.US.regions;
+
+export type RegionName = string; // Dynamic based on detected geography
+export type IndustryCategory = 'Movie & Entertainment' | 'Music & Audio' | 'Fashion & Apparel';
 
 // Industry classification keywords
 export const INDUSTRY_KEYWORDS = {
@@ -25,25 +24,14 @@ export const INDUSTRY_KEYWORDS = {
   'Movie & Entertainment': [] // Default - everything else falls here
 } as const;
 
-export type IndustryCategory = keyof typeof INDUSTRY_KEYWORDS;
-
 // Global Filter State
 export interface GlobalFilterState {
-  // State filters
   states: string[];
-  regions: RegionName[];
-  
-  // Role filters (columns in wide-format data)
+  regions: string[];
   selectedRoles: string[];
-  
-  // Industry filters
   selectedIndustries: IndustryCategory[];
-  industryFilterMode: 'AND' | 'OR'; // AND = intersection, OR = additive
-  
-  // Search
+  industryFilterMode: 'AND' | 'OR';
   searchText: string;
-  
-  // Date range
   dateRange: { start: Date | null; end: Date | null };
 }
 
@@ -59,7 +47,7 @@ export interface RoleMetadata {
 export interface StateSummary {
   stateCode: string;
   stateName: string;
-  region: RegionName;
+  region: string;
   selectedRolesTotal: number;
   percentOfTotal: number;
   topRoles: { name: string; count: number }[];
@@ -78,13 +66,13 @@ export interface ExtendedKPIData {
   roleCoverage: number;
   roleBreakdown: Record<string, number>;
   industryBreakdown: Record<IndustryCategory, number>;
-  regionBreakdown: Record<RegionName, number>;
+  regionBreakdown: Record<string, number>;
   stateBreakdown: Record<string, number>;
 }
 
 // Chart data types
 export interface RegionIndustryData {
-  region: RegionName;
+  region: string;
   'Movie & Entertainment': number;
   'Music & Audio': number;
   'Fashion & Apparel': number;
@@ -93,11 +81,7 @@ export interface RegionIndustryData {
 
 export interface RoleRegionData {
   role: string;
-  Northeast: number;
-  Midwest: number;
-  South: number;
-  West: number;
-  total: number;
+  [regionName: string]: string | number; // dynamic region keys + total
 }
 
 export interface ParetoDataPoint {
@@ -107,44 +91,34 @@ export interface ParetoDataPoint {
   cumulativePercent: number;
 }
 
-// Helper function to get region from state code
-export function getRegionFromState(stateCode: string): RegionName | null {
-  for (const [region, states] of Object.entries(US_REGIONS)) {
-    if ((states as readonly string[]).includes(stateCode)) {
-      return region as RegionName;
-    }
-  }
-  return null;
+// Helper function to get region from state code (uses profile)
+export function getRegionFromState(stateCode: string, profile?: GeographyProfile): string | null {
+  const p = profile || GEOGRAPHY_PROFILES.US;
+  return getRegionFromLocation(stateCode, p);
 }
 
-// Helper function to get states from regions
-export function getStatesFromRegions(regions: RegionName[]): string[] {
-  const states: string[] = [];
-  for (const region of regions) {
-    states.push(...US_REGIONS[region]);
-  }
-  return [...new Set(states)];
+// Helper function to get states from regions (uses profile)
+export function getStatesFromRegions(regions: string[], profile?: GeographyProfile): string[] {
+  const p = profile || GEOGRAPHY_PROFILES.US;
+  return geoGetLocationsFromRegions(regions, p);
 }
 
 // Helper function to classify role into industry
 export function classifyRoleIndustry(roleName: string): IndustryCategory {
   const lowerRole = roleName.toLowerCase();
   
-  // Check Fashion & Apparel
   for (const keyword of INDUSTRY_KEYWORDS['Fashion & Apparel']) {
     if (lowerRole.includes(keyword.toLowerCase())) {
       return 'Fashion & Apparel';
     }
   }
   
-  // Check Music & Audio
   for (const keyword of INDUSTRY_KEYWORDS['Music & Audio']) {
     if (lowerRole.includes(keyword.toLowerCase())) {
       return 'Music & Audio';
     }
   }
   
-  // Default to Movie & Entertainment
   return 'Movie & Entertainment';
 }
 

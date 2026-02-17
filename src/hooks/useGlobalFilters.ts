@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { DataColumn, US_STATES } from '@/types/analytics';
+import { DataColumn } from '@/types/analytics';
 import {
   GlobalFilterState,
   ExtendedKPIData,
@@ -8,33 +8,36 @@ import {
   RegionIndustryData,
   RoleRegionData,
   ParetoDataPoint,
-  RegionName,
   IndustryCategory,
-  US_REGIONS,
-  getRegionFromState,
-  getStatesFromRegions,
   classifyRoleIndustry,
   initialGlobalFilterState
 } from '@/types/filters';
+import { GeographyProfile, GEOGRAPHY_PROFILES, getRegionFromLocation, getLocationsFromRegions, getLocationName } from '@/types/geography';
 
 interface UseGlobalFiltersProps {
   data: Record<string, unknown>[];
   columns: DataColumn[];
+  geographyType?: string;
 }
 
-export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
+export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFiltersProps) {
   const [filters, setFilters] = useState<GlobalFilterState>(initialGlobalFilterState);
 
-  // Detect state column and role columns (numeric columns except state)
+  // Resolve the geography profile
+  const profile: GeographyProfile = useMemo(() => {
+    if (geographyType && GEOGRAPHY_PROFILES[geographyType]) {
+      return GEOGRAPHY_PROFILES[geographyType];
+    }
+    return GEOGRAPHY_PROFILES.US; // default fallback
+  }, [geographyType]);
+
+  const regionNames = useMemo(() => Object.keys(profile.regions), [profile]);
+
+  // Detect state column and role columns
   const { stateColumn, roleColumns } = useMemo(() => {
     const stateCol = columns.find(c => c.isState);
-    // Role columns are all columns that are NOT the state column
-    // In wide-format, roles are represented as columns with numeric values
     const roleCols = columns.filter(c => 
-      c.type === 'number' && 
-      !c.isState && 
-      !c.isCity && 
-      !c.isZip
+      c.type === 'number' && !c.isState && !c.isCity && !c.isZip
     );
     return { stateColumn: stateCol, roleColumns: roleCols };
   }, [columns]);
@@ -42,53 +45,41 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
   // Get all role names with their industry classification
   const roleMetadata: RoleMetadata[] = useMemo(() => {
     if (roleColumns.length === 0) return [];
-
     const metadata: RoleMetadata[] = [];
     let grandTotal = 0;
 
-    // Calculate total for each role across all data
     for (const col of roleColumns) {
       let roleTotal = 0;
       for (const row of data) {
         const value = row[col.name];
-        if (typeof value === 'number' && !isNaN(value)) {
-          roleTotal += value;
-        }
+        if (typeof value === 'number' && !isNaN(value)) roleTotal += value;
       }
       grandTotal += roleTotal;
       metadata.push({
         columnName: col.name,
         industry: classifyRoleIndustry(col.name),
         totalPeople: roleTotal,
-        percentOfTotal: 0 // Will calculate after we have grandTotal
+        percentOfTotal: 0
       });
     }
 
-    // Calculate percentages
     for (const role of metadata) {
       role.percentOfTotal = grandTotal > 0 ? (role.totalPeople / grandTotal) * 100 : 0;
     }
-
     return metadata.sort((a, b) => b.totalPeople - a.totalPeople);
   }, [data, roleColumns]);
 
-  // Get top 20 roles by total count
-  const top20Roles = useMemo(() => {
-    return roleMetadata.slice(0, 20).map(r => r.columnName);
-  }, [roleMetadata]);
+  const top20Roles = useMemo(() => roleMetadata.slice(0, 20).map(r => r.columnName), [roleMetadata]);
 
-  // Get roles by industry
   const rolesByIndustry = useMemo(() => {
     const byIndustry: Record<IndustryCategory, string[]> = {
       'Movie & Entertainment': [],
       'Music & Audio': [],
       'Fashion & Apparel': []
     };
-    
     for (const role of roleMetadata) {
       byIndustry[role.industry].push(role.columnName);
     }
-    
     return byIndustry;
   }, [roleMetadata]);
 
@@ -98,17 +89,14 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
     const states = new Set<string>();
     for (const row of data) {
       const stateValue = row[`${stateColumn.name}_normalized`] || row['_state_normalized'];
-      if (stateValue && typeof stateValue === 'string') {
-        states.add(stateValue);
-      }
+      if (stateValue && typeof stateValue === 'string') states.add(stateValue);
     }
     return Array.from(states).sort();
   }, [data, stateColumn]);
 
-  // Compute effective selected roles based on industry filter mode
+  // Compute effective selected roles
   const effectiveSelectedRoles = useMemo(() => {
     if (filters.selectedIndustries.length === 0 && filters.selectedRoles.length === 0) {
-      // No filters = all roles
       return roleColumns.map(c => c.name);
     }
 
@@ -119,58 +107,34 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
       }
     }
 
-    if (filters.selectedRoles.length === 0) {
-      // Only industry filter
-      return industryRoles;
-    }
+    if (filters.selectedRoles.length === 0) return industryRoles;
+    if (filters.selectedIndustries.length === 0) return filters.selectedRoles;
 
-    if (filters.selectedIndustries.length === 0) {
-      // Only role filter
-      return filters.selectedRoles;
-    }
-
-    // Both filters active
     if (filters.industryFilterMode === 'AND') {
-      // Intersection
       return filters.selectedRoles.filter(r => industryRoles.includes(r));
     } else {
-      // Union
       return [...new Set([...filters.selectedRoles, ...industryRoles])];
     }
   }, [filters.selectedIndustries, filters.selectedRoles, filters.industryFilterMode, rolesByIndustry, roleColumns]);
 
-  // Compute effective selected states based on region filter
+  // Compute effective selected states (using dynamic profile)
   const effectiveSelectedStates = useMemo(() => {
     let statesFromRegions: string[] = [];
     if (filters.regions.length > 0) {
-      statesFromRegions = getStatesFromRegions(filters.regions);
+      statesFromRegions = getLocationsFromRegions(filters.regions, profile);
     }
 
-    if (filters.states.length === 0 && filters.regions.length === 0) {
-      // No filter = all available states
-      return availableStates;
-    }
+    if (filters.states.length === 0 && filters.regions.length === 0) return availableStates;
+    if (filters.states.length === 0) return statesFromRegions.filter(s => availableStates.includes(s));
+    if (filters.regions.length === 0) return filters.states;
 
-    if (filters.states.length === 0) {
-      // Only region filter
-      return statesFromRegions.filter(s => availableStates.includes(s));
-    }
-
-    if (filters.regions.length === 0) {
-      // Only state filter
-      return filters.states;
-    }
-
-    // Both filters - union of region states and custom states
     return [...new Set([...statesFromRegions, ...filters.states])].filter(s => availableStates.includes(s));
-  }, [filters.states, filters.regions, availableStates]);
+  }, [filters.states, filters.regions, availableStates, profile]);
 
-  // Filtered data based on state selection
+  // Filtered data
   const filteredData = useMemo(() => {
     if (!stateColumn) return data;
-    if (effectiveSelectedStates.length === 0 || effectiveSelectedStates.length === availableStates.length) {
-      return data;
-    }
+    if (effectiveSelectedStates.length === 0 || effectiveSelectedStates.length === availableStates.length) return data;
 
     return data.filter(row => {
       const stateValue = row[`${stateColumn.name}_normalized`] || row['_state_normalized'];
@@ -178,56 +142,40 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
     });
   }, [data, stateColumn, effectiveSelectedStates, availableStates]);
 
-  // Calculate SelectedRolesTotal for each state
+  // State role totals
   const stateRoleTotals = useMemo(() => {
     if (!stateColumn) return new Map<string, number>();
-
     const totals = new Map<string, number>();
     const selectedRoleSet = new Set(effectiveSelectedRoles);
 
     for (const row of filteredData) {
       const stateValue = (row[`${stateColumn.name}_normalized`] || row['_state_normalized']) as string;
       if (!stateValue) continue;
-
       let rowTotal = totals.get(stateValue) || 0;
       for (const col of roleColumns) {
         if (selectedRoleSet.has(col.name)) {
           const value = row[col.name];
-          if (typeof value === 'number' && !isNaN(value)) {
-            rowTotal += value;
-          }
+          if (typeof value === 'number' && !isNaN(value)) rowTotal += value;
         }
       }
       totals.set(stateValue, rowTotal);
     }
-
     return totals;
   }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles]);
 
-  // Extended KPI calculations
+  // Extended KPI calculations (dynamic regions)
   const extendedKPIs: ExtendedKPIData = useMemo(() => {
     const selectedRoleSet = new Set(effectiveSelectedRoles);
-    
-    // Total people across selected roles and states
     let totalPeople = 0;
     const stateBreakdown: Record<string, number> = {};
     const roleBreakdown: Record<string, number> = {};
     const industryTotals: Record<IndustryCategory, number> = {
-      'Movie & Entertainment': 0,
-      'Music & Audio': 0,
-      'Fashion & Apparel': 0
+      'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0
     };
-    const regionTotals: Record<RegionName, number> = {
-      Northeast: 0,
-      Midwest: 0,
-      South: 0,
-      West: 0
-    };
+    const regionTotals: Record<string, number> = {};
+    for (const rn of regionNames) regionTotals[rn] = 0;
 
-    // Initialize role breakdown
-    for (const role of effectiveSelectedRoles) {
-      roleBreakdown[role] = 0;
-    }
+    for (const role of effectiveSelectedRoles) roleBreakdown[role] = 0;
 
     for (const row of filteredData) {
       const stateValue = stateColumn 
@@ -236,21 +184,16 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
 
       for (const col of roleColumns) {
         if (!selectedRoleSet.has(col.name)) continue;
-
         const value = row[col.name];
         if (typeof value === 'number' && !isNaN(value)) {
           totalPeople += value;
           roleBreakdown[col.name] = (roleBreakdown[col.name] || 0) + value;
-          
-          // Industry breakdown
-          const industry = classifyRoleIndustry(col.name);
-          industryTotals[industry] += value;
+          industryTotals[classifyRoleIndustry(col.name)] += value;
 
-          // State and region breakdown
           if (stateValue) {
             stateBreakdown[stateValue] = (stateBreakdown[stateValue] || 0) + value;
-            const region = getRegionFromState(stateValue);
-            if (region) {
+            const region = getRegionFromLocation(stateValue, profile);
+            if (region && regionTotals[region] !== undefined) {
               regionTotals[region] += value;
             }
           }
@@ -259,28 +202,23 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
     }
 
     const statesIncluded = Object.keys(stateBreakdown).length;
-    const regionsSet = new Set<RegionName>();
+    const regionsSet = new Set<string>();
     for (const state of Object.keys(stateBreakdown)) {
-      const region = getRegionFromState(state);
+      const region = getRegionFromLocation(state, profile);
       if (region) regionsSet.add(region);
     }
 
-    // Find top and bottom states
     const sortedStates = Object.entries(stateBreakdown).sort((a, b) => b[1] - a[1]);
     const topState = sortedStates[0] ? { state: sortedStates[0][0], count: sortedStates[0][1] } : null;
     const bottomState = sortedStates.length > 0 
       ? { state: sortedStates[sortedStates.length - 1][0], count: sortedStates[sortedStates.length - 1][1] }
       : null;
 
-    // Find top role
     const sortedRoles = Object.entries(roleBreakdown).sort((a, b) => b[1] - a[1]);
     const topRole = sortedRoles[0] ? { role: sortedRoles[0][0], count: sortedRoles[0][1] } : null;
 
-    // Find top industry
     const sortedIndustries = Object.entries(industryTotals).sort((a, b) => b[1] - a[1]) as [IndustryCategory, number][];
-    const topIndustry = sortedIndustries[0] 
-      ? { industry: sortedIndustries[0][0], count: sortedIndustries[0][1] }
-      : null;
+    const topIndustry = sortedIndustries[0] ? { industry: sortedIndustries[0][0], count: sortedIndustries[0][1] } : null;
 
     return {
       totalPeople,
@@ -297,22 +235,18 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
       regionBreakdown: regionTotals,
       stateBreakdown
     };
-  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles]);
+  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles, profile, regionNames]);
 
-  // State summaries for table view
+  // State summaries (dynamic profile)
   const stateSummaries: StateSummary[] = useMemo(() => {
     if (!stateColumn) return [];
-
     const selectedRoleSet = new Set(effectiveSelectedRoles);
     const stateData: Record<string, { total: number; roles: Record<string, number> }> = {};
 
     for (const row of filteredData) {
       const stateValue = (row[`${stateColumn.name}_normalized`] || row['_state_normalized']) as string;
       if (!stateValue) continue;
-
-      if (!stateData[stateValue]) {
-        stateData[stateValue] = { total: 0, roles: {} };
-      }
+      if (!stateData[stateValue]) stateData[stateValue] = { total: 0, roles: {} };
 
       for (const col of roleColumns) {
         if (!selectedRoleSet.has(col.name)) continue;
@@ -335,78 +269,69 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
 
         return {
           stateCode,
-          stateName: US_STATES[stateCode] || stateCode,
-          region: getRegionFromState(stateCode) || 'West' as RegionName,
+          stateName: getLocationName(stateCode, profile),
+          region: getRegionFromLocation(stateCode, profile) || 'Other',
           selectedRolesTotal: data.total,
           percentOfTotal: grandTotal > 0 ? (data.total / grandTotal) * 100 : 0,
           topRoles: sortedRoles
         };
       })
       .sort((a, b) => b.selectedRolesTotal - a.selectedRolesTotal);
-  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles, extendedKPIs.totalPeople]);
+  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles, extendedKPIs.totalPeople, profile]);
 
-  // Region × Industry heatmap data
+  // Region × Industry data (dynamic regions)
   const regionIndustryData: RegionIndustryData[] = useMemo(() => {
     const selectedRoleSet = new Set(effectiveSelectedRoles);
-    const data: Record<RegionName, Record<IndustryCategory, number>> = {
-      Northeast: { 'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0 },
-      Midwest: { 'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0 },
-      South: { 'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0 },
-      West: { 'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0 }
-    };
+    const dataMap: Record<string, Record<IndustryCategory, number>> = {};
+    for (const rn of regionNames) {
+      dataMap[rn] = { 'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0 };
+    }
 
     for (const row of filteredData) {
       const stateValue = stateColumn 
         ? (row[`${stateColumn.name}_normalized`] || row['_state_normalized']) as string
         : null;
       if (!stateValue) continue;
-
-      const region = getRegionFromState(stateValue);
-      if (!region) continue;
+      const region = getRegionFromLocation(stateValue, profile);
+      if (!region || !dataMap[region]) continue;
 
       for (const col of roleColumns) {
         if (!selectedRoleSet.has(col.name)) continue;
         const value = row[col.name];
         if (typeof value === 'number' && !isNaN(value)) {
-          const industry = classifyRoleIndustry(col.name);
-          data[region][industry] += value;
+          dataMap[region][classifyRoleIndustry(col.name)] += value;
         }
       }
     }
 
-    return Object.entries(data).map(([region, industries]) => ({
-      region: region as RegionName,
+    return Object.entries(dataMap).map(([region, industries]) => ({
+      region,
       ...industries,
       total: Object.values(industries).reduce((a, b) => a + b, 0)
     }));
-  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles]);
+  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles, profile, regionNames]);
 
-  // Pareto chart data (80/20 rule)
+  // Pareto data
   const paretoData: ParetoDataPoint[] = useMemo(() => {
-    const sortedRoles = Object.entries(extendedKPIs.roleBreakdown)
-      .sort((a, b) => b[1] - a[1]);
-    
+    const sortedRoles = Object.entries(extendedKPIs.roleBreakdown).sort((a, b) => b[1] - a[1]);
     const total = sortedRoles.reduce((sum, [, count]) => sum + count, 0);
     let cumulative = 0;
 
     return sortedRoles.map(([role, count]) => {
       cumulative += count;
-      return {
-        role,
-        count,
-        cumulative,
-        cumulativePercent: total > 0 ? (cumulative / total) * 100 : 0
-      };
+      return { role, count, cumulative, cumulativePercent: total > 0 ? (cumulative / total) * 100 : 0 };
     });
   }, [extendedKPIs.roleBreakdown]);
 
-  // Role × Region data
+  // Role × Region data (dynamic regions)
   const roleRegionData: RoleRegionData[] = useMemo(() => {
     const selectedRoleSet = new Set(effectiveSelectedRoles);
-    const data: Record<string, Record<RegionName, number>> = {};
+    const dataMap: Record<string, Record<string, number>> = {};
 
     for (const role of effectiveSelectedRoles) {
-      data[role] = { Northeast: 0, Midwest: 0, South: 0, West: 0 };
+      const regionData: Record<string, number> = {};
+      for (const rn of regionNames) regionData[rn] = 0;
+      dataMap[role] = regionData;
     }
 
     for (const row of filteredData) {
@@ -414,35 +339,34 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
         ? (row[`${stateColumn.name}_normalized`] || row['_state_normalized']) as string
         : null;
       if (!stateValue) continue;
-
-      const region = getRegionFromState(stateValue);
+      const region = getRegionFromLocation(stateValue, profile);
       if (!region) continue;
 
       for (const col of roleColumns) {
         if (!selectedRoleSet.has(col.name)) continue;
         const value = row[col.name];
-        if (typeof value === 'number' && !isNaN(value)) {
-          data[col.name][region] += value;
+        if (typeof value === 'number' && !isNaN(value) && dataMap[col.name]?.[region] !== undefined) {
+          dataMap[col.name][region] += value;
         }
       }
     }
 
-    return Object.entries(data)
+    return Object.entries(dataMap)
       .map(([role, regions]) => ({
         role,
         ...regions,
         total: Object.values(regions).reduce((a, b) => a + b, 0)
       }))
-      .sort((a, b) => b.total - a.total)
+      .sort((a, b) => (b.total as number) - (a.total as number))
       .slice(0, 10);
-  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles]);
+  }, [filteredData, stateColumn, roleColumns, effectiveSelectedRoles, profile, regionNames]);
 
   // Filter actions
   const setStates = useCallback((states: string[]) => {
     setFilters(prev => ({ ...prev, states }));
   }, []);
 
-  const setRegions = useCallback((regions: RegionName[]) => {
+  const setRegions = useCallback((regions: string[]) => {
     setFilters(prev => ({ ...prev, regions }));
   }, []);
 
@@ -473,35 +397,25 @@ export function useGlobalFilters({ data, columns }: UseGlobalFiltersProps) {
   return {
     filters,
     setFilters,
-    
-    // Filter setters
+    profile,
+    regionNames,
     setStates,
     setRegions,
     setSelectedRoles,
     setSelectedIndustries,
     setIndustryFilterMode,
-    
-    // Quick actions
     selectTop20Roles,
     selectAllStates,
     clearAllFilters,
-    
-    // Computed values
     effectiveSelectedStates,
     effectiveSelectedRoles,
     availableStates,
     roleMetadata,
     rolesByIndustry,
     top20Roles,
-    
-    // Data
     filteredData,
     stateRoleTotals,
-    
-    // KPIs
     extendedKPIs,
-    
-    // Chart data
     stateSummaries,
     regionIndustryData,
     paretoData,

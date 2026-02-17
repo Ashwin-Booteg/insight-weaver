@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
-import { DataColumn, DatasetInfo, US_STATES, STATE_NAME_TO_CODE, INDUSTRY_CATEGORIES } from '@/types/analytics';
+import { DataColumn, DatasetInfo } from '@/types/analytics';
+import { GeographyProfile, detectGeography, normalizeLocationValue, GEOGRAPHY_PROFILES } from '@/types/geography';
 
 export function parseExcelFile(file: File): Promise<DatasetInfo> {
   return new Promise((resolve, reject) => {
@@ -23,7 +24,20 @@ export function parseExcelFile(file: File): Promise<DatasetInfo> {
         }
         
         const columns = detectColumnTypes(jsonData);
-        const normalizedData = normalizeData(jsonData, columns);
+        
+        // Auto-detect geography from location column values
+        const stateColumn = columns.find(c => c.isState);
+        let geographyProfile: GeographyProfile = GEOGRAPHY_PROFILES.GENERIC;
+        
+        if (stateColumn) {
+          const locationValues = jsonData
+            .slice(0, 200)
+            .map(row => String(row[stateColumn.name] || ''))
+            .filter(v => v !== '');
+          geographyProfile = detectGeography(locationValues);
+        }
+        
+        const normalizedData = normalizeData(jsonData, columns, geographyProfile);
         
         const datasetInfo: DatasetInfo = {
           id: generateId(),
@@ -31,7 +45,8 @@ export function parseExcelFile(file: File): Promise<DatasetInfo> {
           uploadedAt: new Date(),
           rowCount: normalizedData.length,
           columns,
-          data: normalizedData
+          data: normalizedData,
+          geographyType: geographyProfile.id
         };
         
         resolve(datasetInfo);
@@ -66,13 +81,13 @@ function analyzeColumn(name: string, values: unknown[]): DataColumn {
   const lowerName = name.toLowerCase();
   const nonNullValues = values.filter(v => v !== null && v !== undefined && v !== '');
   
-  // Detect location columns
-  const stateKeywords = ['state', 'st', 'region', 'province'];
+  // Detect location columns - expanded for international data
+  const stateKeywords = ['state', 'st', 'region', 'province', 'prefecture', 'county', 'territoire', 'bundesland', 'country', 'nation', 'territorio', 'estado'];
   const cityKeywords = ['city', 'town', 'municipality'];
   const zipKeywords = ['zip', 'postal', 'postcode', 'zipcode'];
   
   const isState = stateKeywords.some(k => lowerName.includes(k)) || 
-    nonNullValues.some(v => isUSState(String(v)));
+    isKnownLocation(nonNullValues);
   const isCity = cityKeywords.some(k => lowerName.includes(k));
   const isZip = zipKeywords.some(k => lowerName.includes(k));
   
@@ -113,7 +128,6 @@ function analyzeColumn(name: string, values: unknown[]): DataColumn {
     } else if (typeof sample === 'boolean') {
       type = 'boolean';
     } else if (typeof sample === 'string') {
-      // Check if it's a date string
       if (isDateString(sample)) {
         type = 'date';
       } else if (isNumericString(sample)) {
@@ -140,13 +154,25 @@ function analyzeColumn(name: string, values: unknown[]): DataColumn {
   };
 }
 
-function isUSState(value: string): boolean {
-  const trimmed = value.trim().toUpperCase();
-  if (US_STATES[trimmed]) return true;
+// Check if values match any known geography profile
+function isKnownLocation(values: unknown[]): boolean {
+  const strValues = values.filter(v => typeof v === 'string').map(v => String(v).trim());
+  if (strValues.length === 0) return false;
   
-  const lowerValue = value.trim().toLowerCase();
-  if (STATE_NAME_TO_CODE[lowerValue]) return true;
-  
+  const sample = strValues.slice(0, 20);
+  // Check against all profiles
+  for (const profile of Object.values(GEOGRAPHY_PROFILES)) {
+    if (profile.id === 'GENERIC') continue;
+    let matches = 0;
+    for (const val of sample) {
+      const upper = val.toUpperCase();
+      const lower = val.toLowerCase();
+      if (profile.locationMap[upper] || profile.nameToCode[lower]) {
+        matches++;
+      }
+    }
+    if (matches / sample.length > 0.3) return true;
+  }
   return false;
 }
 
@@ -166,20 +192,9 @@ function isNumericString(value: string): boolean {
   return !isNaN(Number(cleaned)) && cleaned !== '';
 }
 
-export function normalizeStateValue(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null;
-  
-  const strValue = String(value).trim();
-  const upperValue = strValue.toUpperCase();
-  
-  // Check if it's already a state code
-  if (US_STATES[upperValue]) return upperValue;
-  
-  // Check if it's a state name
-  const lowerValue = strValue.toLowerCase();
-  if (STATE_NAME_TO_CODE[lowerValue]) return STATE_NAME_TO_CODE[lowerValue];
-  
-  return null;
+export function normalizeStateValue(value: unknown, profile?: GeographyProfile): string | null {
+  const p = profile || GEOGRAPHY_PROFILES.US;
+  return normalizeLocationValue(value, p);
 }
 
 // Categorize any industry value into one of the 3 main categories
@@ -188,59 +203,38 @@ export function categorizeIndustry(value: unknown): string | null {
   
   const industryValue = String(value).toLowerCase();
   
-  // Movie & Entertainment keywords
   if (
-    industryValue.includes('movie') || 
-    industryValue.includes('film') || 
-    industryValue.includes('entertainment') ||
-    industryValue.includes('cinema') ||
-    industryValue.includes('streaming') ||
-    industryValue.includes('media') ||
-    industryValue.includes('tv') ||
-    industryValue.includes('television') ||
-    industryValue.includes('video') ||
-    industryValue.includes('broadcast') ||
+    industryValue.includes('movie') || industryValue.includes('film') || 
+    industryValue.includes('entertainment') || industryValue.includes('cinema') ||
+    industryValue.includes('streaming') || industryValue.includes('media') ||
+    industryValue.includes('tv') || industryValue.includes('television') ||
+    industryValue.includes('video') || industryValue.includes('broadcast') ||
     industryValue.includes('production')
-  ) {
-    return 'Movie & Entertainment';
-  }
+  ) return 'Movie & Entertainment';
   
-  // Music & Audio keywords
   if (
-    industryValue.includes('music') || 
-    industryValue.includes('audio') || 
-    industryValue.includes('sound') ||
-    industryValue.includes('recording') ||
-    industryValue.includes('podcast') ||
-    industryValue.includes('radio') ||
-    industryValue.includes('artist') ||
-    industryValue.includes('label') ||
+    industryValue.includes('music') || industryValue.includes('audio') || 
+    industryValue.includes('sound') || industryValue.includes('recording') ||
+    industryValue.includes('podcast') || industryValue.includes('radio') ||
+    industryValue.includes('artist') || industryValue.includes('label') ||
     industryValue.includes('concert')
-  ) {
-    return 'Music & Audio';
-  }
+  ) return 'Music & Audio';
   
-  // Fashion & Apparel keywords
   if (
-    industryValue.includes('fashion') || 
-    industryValue.includes('apparel') || 
-    industryValue.includes('clothing') ||
-    industryValue.includes('textile') ||
-    industryValue.includes('garment') ||
-    industryValue.includes('style') ||
-    industryValue.includes('wear') ||
-    industryValue.includes('boutique') ||
+    industryValue.includes('fashion') || industryValue.includes('apparel') || 
+    industryValue.includes('clothing') || industryValue.includes('textile') ||
+    industryValue.includes('garment') || industryValue.includes('style') ||
+    industryValue.includes('wear') || industryValue.includes('boutique') ||
     industryValue.includes('designer')
-  ) {
-    return 'Fashion & Apparel';
-  }
+  ) return 'Fashion & Apparel';
   
-  return null; // Doesn't match any category
+  return null;
 }
 
 function normalizeData(
   data: Record<string, unknown>[],
-  columns: DataColumn[]
+  columns: DataColumn[],
+  profile: GeographyProfile
 ): Record<string, unknown>[] {
   const stateColumn = columns.find(c => c.isState);
   const industryColumn = columns.find(c => c.isIndustry);
@@ -248,10 +242,10 @@ function normalizeData(
   return data.map(row => {
     const normalizedRow: Record<string, unknown> = { ...row };
     
-    // Normalize state values
+    // Normalize state/location values using detected profile
     if (stateColumn) {
       const stateValue = row[stateColumn.name];
-      normalizedRow[`${stateColumn.name}_normalized`] = normalizeStateValue(stateValue);
+      normalizedRow[`${stateColumn.name}_normalized`] = normalizeStateValue(stateValue, profile);
     }
     
     // Normalize industry values to categories
