@@ -1,41 +1,16 @@
 import React from 'react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  ComposedChart,
-  Line,
-  Area
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, ComposedChart, Line
 } from 'recharts';
 import { 
-  RegionIndustryData, 
-  RoleRegionData, 
-  ParetoDataPoint,
-  StateSummary,
-  ExtendedKPIData,
-  RegionName,
-  IndustryCategory,
-  GlobalFilterState
+  RegionIndustryData, RoleRegionData, ParetoDataPoint,
+  ExtendedKPIData, IndustryCategory, GlobalFilterState
 } from '@/types/filters';
-import { US_STATES } from '@/types/analytics';
+import { GeographyProfile, getRegionColors, getLocationName } from '@/types/geography';
 import { cn } from '@/lib/utils';
 import { Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
-const REGION_COLORS: Record<RegionName, string> = {
-  Northeast: 'hsl(172, 66%, 50%)',
-  Midwest: 'hsl(262, 83%, 58%)',
-  South: 'hsl(340, 82%, 52%)',
-  West: 'hsl(38, 92%, 50%)'
-};
 
 const INDUSTRY_COLORS: Record<IndustryCategory, string> = {
   'Movie & Entertainment': 'hsl(340, 82%, 52%)',
@@ -67,25 +42,28 @@ function ChartCard({ title, children, className, activeFilters }: ChartCardProps
   );
 }
 
-// Top 10 States Bar Chart
+// Top 10 Locations Bar Chart
 interface TopStatesChartProps {
   kpiData: ExtendedKPIData;
   onStateClick?: (stateCode: string) => void;
   activeFilters?: string[];
+  profile?: GeographyProfile;
 }
 
-export function TopStatesChart({ kpiData, onStateClick, activeFilters }: TopStatesChartProps) {
+export function TopStatesChart({ kpiData, onStateClick, activeFilters, profile }: TopStatesChartProps) {
   const data = Object.entries(kpiData.stateBreakdown)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([state, count]) => ({
       state,
-      name: US_STATES[state] || state,
+      name: profile ? getLocationName(state, profile) : state,
       count
     }));
 
+  const locationLabel = profile?.locationLabel || 'States';
+
   return (
-    <ChartCard title="Top 10 States by People" activeFilters={activeFilters}>
+    <ChartCard title={`Top 10 ${locationLabel} by People`} activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
           <defs>
@@ -96,73 +74,44 @@ export function TopStatesChart({ kpiData, onStateClick, activeFilters }: TopStat
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis type="number" tick={{ fontSize: 12 }} />
-          <YAxis
-            dataKey="name"
-            type="category"
-            width={100}
-            tick={{ fontSize: 11 }}
-          />
+          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
             formatter={(value: number) => [value.toLocaleString(), 'People']}
           />
-          <Bar 
-            dataKey="count" 
-            fill="url(#topStatesGradient)" 
-            radius={[0, 8, 8, 0]}
-            onClick={(data) => onStateClick?.(data.state)}
-            className="cursor-pointer"
-          />
+          <Bar dataKey="count" fill="url(#topStatesGradient)" radius={[0, 8, 8, 0]}
+            onClick={(data) => onStateClick?.(data.state)} className="cursor-pointer" />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
   );
 }
 
-// Bottom 10 States Bar Chart
-export function BottomStatesChart({ kpiData, onStateClick, activeFilters }: TopStatesChartProps) {
-  const allStates = Object.entries(kpiData.stateBreakdown)
-    .sort((a, b) => a[1] - b[1]);
-  
-  const data = allStates
+export function BottomStatesChart({ kpiData, onStateClick, activeFilters, profile }: TopStatesChartProps) {
+  const data = Object.entries(kpiData.stateBreakdown)
+    .sort((a, b) => a[1] - b[1])
     .slice(0, 10)
     .map(([state, count]) => ({
       state,
-      name: US_STATES[state] || state,
+      name: profile ? getLocationName(state, profile) : state,
       count
     }));
 
+  const locationLabel = profile?.locationLabel || 'States';
+
   return (
-    <ChartCard title="Bottom 10 States by People" activeFilters={activeFilters}>
+    <ChartCard title={`Bottom 10 ${locationLabel} by People`} activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis type="number" tick={{ fontSize: 12 }} />
-          <YAxis
-            dataKey="name"
-            type="category"
-            width={100}
-            tick={{ fontSize: 11 }}
-          />
+          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
             formatter={(value: number) => [value.toLocaleString(), 'People']}
           />
-          <Bar 
-            dataKey="count" 
-            fill="hsl(340, 82%, 52%)" 
-            radius={[0, 8, 8, 0]}
-            onClick={(data) => onStateClick?.(data.state)}
-            className="cursor-pointer"
-          />
+          <Bar dataKey="count" fill="hsl(340, 82%, 52%)" radius={[0, 8, 8, 0]}
+            onClick={(data) => onStateClick?.(data.state)} className="cursor-pointer" />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -172,7 +121,7 @@ export function BottomStatesChart({ kpiData, onStateClick, activeFilters }: TopS
 // Region × Industry Stacked Bar Chart
 interface RegionIndustryChartProps {
   data: RegionIndustryData[];
-  onRegionClick?: (region: RegionName) => void;
+  onRegionClick?: (region: string) => void;
   onIndustryClick?: (industry: IndustryCategory) => void;
   activeFilters?: string[];
 }
@@ -182,19 +131,13 @@ export function RegionIndustryStackedChart({ data, onRegionClick, activeFilters 
     <ChartCard title="Region Totals by Industry" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} onClick={(e) => {
-          if (e?.activePayload?.[0]) {
-            onRegionClick?.(e.activePayload[0].payload.region);
-          }
+          if (e?.activePayload?.[0]) onRegionClick?.(e.activePayload[0].payload.region);
         }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="region" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
             formatter={(value: number) => value.toLocaleString()}
           />
           <Legend />
@@ -215,42 +158,22 @@ interface IndustryDonutChartProps {
 }
 
 export function IndustryDonutChart({ data, onIndustryClick, activeFilters }: IndustryDonutChartProps) {
-  const chartData = Object.entries(data).map(([name, value]) => ({
-    name,
-    value
-  }));
-
-  const total = chartData.reduce((sum, d) => sum + d.value, 0);
+  const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
 
   return (
     <ChartCard title="Share of People by Industry" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={100}
-            paddingAngle={3}
-            dataKey="value"
-            label={({ name, percent }) => `${(percent * 100).toFixed(1)}%`}
-          >
+          <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100}
+            paddingAngle={3} dataKey="value"
+            label={({ percent }) => `${(percent * 100).toFixed(1)}%`}>
             {chartData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={INDUSTRY_COLORS[entry.name as IndustryCategory]}
-                className="cursor-pointer"
-                onClick={() => onIndustryClick?.(entry.name as IndustryCategory)}
-              />
+              <Cell key={`cell-${index}`} fill={INDUSTRY_COLORS[entry.name as IndustryCategory]}
+                className="cursor-pointer" onClick={() => onIndustryClick?.(entry.name as IndustryCategory)} />
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
             formatter={(value: number) => [value.toLocaleString(), 'People']}
           />
           <Legend />
@@ -289,37 +212,20 @@ export function TopRolesChart({ roleBreakdown, onRoleClick, activeFilters }: Top
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis type="number" tick={{ fontSize: 12 }} />
-          <YAxis
-            dataKey="role"
-            type="category"
-            width={180}
-            tick={{ fontSize: 10 }}
-          />
+          <YAxis dataKey="role" type="category" width={180} tick={{ fontSize: 10 }} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
-            formatter={(value: number, name: any, props: any) => [
-              value.toLocaleString(), 
-              props.payload.fullRole
-            ]}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
+            formatter={(value: number, name: any, props: any) => [value.toLocaleString(), props.payload.fullRole]}
           />
-          <Bar 
-            dataKey="count" 
-            fill="url(#roleGradient)" 
-            radius={[0, 6, 6, 0]}
-            onClick={(data) => onRoleClick?.(data.fullRole)}
-            className="cursor-pointer"
-          />
+          <Bar dataKey="count" fill="url(#roleGradient)" radius={[0, 6, 6, 0]}
+            onClick={(data) => onRoleClick?.(data.fullRole)} className="cursor-pointer" />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
   );
 }
 
-// Pareto Chart (80/20 Rule)
+// Pareto Chart
 interface ParetoChartProps {
   data: ParetoDataPoint[];
   onRoleClick?: (role: string) => void;
@@ -327,7 +233,6 @@ interface ParetoChartProps {
 }
 
 export function ParetoChart({ data, onRoleClick, activeFilters }: ParetoChartProps) {
-  // Take top 20 roles for clarity
   const chartData = data.slice(0, 20).map(d => ({
     ...d,
     role: d.role.length > 15 ? d.role.slice(0, 15) + '...' : d.role
@@ -338,120 +243,68 @@ export function ParetoChart({ data, onRoleClick, activeFilters }: ParetoChartPro
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey="role" 
-            tick={{ fontSize: 10 }}
-            angle={-45}
-            textAnchor="end"
-            interval={0}
-          />
+          <XAxis dataKey="role" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" interval={0} />
           <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-          <YAxis 
-            yAxisId="right" 
-            orientation="right" 
-            tick={{ fontSize: 12 }}
-            domain={[0, 100]}
-            tickFormatter={(v) => `${v}%`}
-          />
+          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
             formatter={(value: number, name: string) => {
               if (name === 'count') return [value.toLocaleString(), 'People'];
               return [`${value.toFixed(1)}%`, 'Cumulative'];
             }}
           />
           <Legend />
-          <Bar 
-            yAxisId="left" 
-            dataKey="count" 
-            name="People"
-            fill="hsl(243, 75%, 59%)" 
-            radius={[4, 4, 0, 0]}
-            onClick={(data) => {
-              // Find original full role name from paretoData
-              const original = data?.role;
-              if (original) {
-                const fullRole = data.role.endsWith('...') 
-                  ? (data as any)._originalRole || original
-                  : original;
-                onRoleClick?.(fullRole);
-              }
-            }}
-            className="cursor-pointer"
-          />
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="cumulativePercent"
-            name="Cumulative %"
-            stroke="hsl(340, 82%, 52%)"
-            strokeWidth={3}
-            dot={{ fill: 'hsl(340, 82%, 52%)', r: 4 }}
-          />
-          {/* 80% reference line */}
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey={() => 80}
-            stroke="hsl(var(--muted-foreground))"
-            strokeDasharray="5 5"
-            strokeWidth={1}
-            dot={false}
-          />
+          <Bar yAxisId="left" dataKey="count" name="People" fill="hsl(243, 75%, 59%)" radius={[4, 4, 0, 0]}
+            onClick={(data) => onRoleClick?.(data?.role)} className="cursor-pointer" />
+          <Line yAxisId="right" type="monotone" dataKey="cumulativePercent" name="Cumulative %"
+            stroke="hsl(340, 82%, 52%)" strokeWidth={3} dot={{ fill: 'hsl(340, 82%, 52%)', r: 4 }} />
+          <Line yAxisId="right" type="monotone" dataKey={() => 80}
+            stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeWidth={1} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </ChartCard>
   );
 }
 
-// Role × Region Stacked Bar Chart
+// Role × Region Stacked Bar Chart (dynamic regions)
 interface RoleRegionChartProps {
   data: RoleRegionData[];
   onRoleClick?: (role: string) => void;
   activeFilters?: string[];
+  profile?: GeographyProfile;
 }
 
-export function RoleRegionStackedChart({ data, onRoleClick, activeFilters }: RoleRegionChartProps) {
+export function RoleRegionStackedChart({ data, onRoleClick, activeFilters, profile }: RoleRegionChartProps) {
+  const regionColors = profile ? getRegionColors(profile) : {};
+  const regionKeys = profile ? Object.keys(profile.regions) : [];
+
   const chartData = data.map(d => ({
     ...d,
-    role: d.role.length > 20 ? d.role.slice(0, 20) + '...' : d.role
+    role: typeof d.role === 'string' && d.role.length > 20 ? d.role.slice(0, 20) + '...' : d.role
   }));
 
   return (
-    <ChartCard title="Top 10 Roles by Region Distribution" className="col-span-full" activeFilters={activeFilters}>
+    <ChartCard title={`Top 10 Roles by ${profile?.regionLabel || 'Region'} Distribution`} className="col-span-full" activeFilters={activeFilters}>
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 50 }} onClick={(e) => {
           if (e?.activePayload?.[0]) {
             const role = e.activePayload[0].payload.role;
-            const original = data.find(d => d.role === role || d.role.startsWith(role.replace('...', '')));
-            onRoleClick?.(original?.role || role);
+            const original = data.find(d => d.role === role || (typeof d.role === 'string' && d.role.startsWith(String(role).replace('...', ''))));
+            onRoleClick?.(String(original?.role || role));
           }
         }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey="role" 
-            tick={{ fontSize: 10 }}
-            angle={-30}
-            textAnchor="end"
-          />
+          <XAxis dataKey="role" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '12px'
-            }}
+            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
             formatter={(value: number) => value.toLocaleString()}
           />
           <Legend />
-          <Bar dataKey="Northeast" stackId="a" fill={REGION_COLORS.Northeast} />
-          <Bar dataKey="Midwest" stackId="a" fill={REGION_COLORS.Midwest} />
-          <Bar dataKey="South" stackId="a" fill={REGION_COLORS.South} />
-          <Bar dataKey="West" stackId="a" fill={REGION_COLORS.West} radius={[4, 4, 0, 0]} />
+          {regionKeys.map((rk, i) => (
+            <Bar key={rk} dataKey={rk} stackId="a" fill={regionColors[rk] || `hsl(${i * 60}, 70%, 50%)`}
+              radius={i === regionKeys.length - 1 ? [4, 4, 0, 0] : undefined} />
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -461,13 +314,8 @@ export function RoleRegionStackedChart({ data, onRoleClick, activeFilters }: Rol
 // Region × Industry Heatmap
 export function RegionIndustryHeatmap({ data, onRegionClick, onIndustryClick, activeFilters }: RegionIndustryChartProps) {
   const industries: IndustryCategory[] = ['Movie & Entertainment', 'Music & Audio', 'Fashion & Apparel'];
-  
-  // Find max value for color scaling
   const maxValue = Math.max(...data.flatMap(d => industries.map(i => d[i])));
-
-  const getOpacity = (value: number) => {
-    return maxValue > 0 ? Math.max(0.2, value / maxValue) : 0.2;
-  };
+  const getOpacity = (value: number) => maxValue > 0 ? Math.max(0.2, value / maxValue) : 0.2;
 
   return (
     <ChartCard title="Region × Industry Heatmap" activeFilters={activeFilters}>

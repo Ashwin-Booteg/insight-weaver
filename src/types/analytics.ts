@@ -1,3 +1,5 @@
+import { GEOGRAPHY_PROFILES } from './geography';
+
 export interface DataColumn {
   name: string;
   type: 'text' | 'number' | 'date' | 'boolean' | 'location';
@@ -20,6 +22,7 @@ export interface DatasetInfo {
   rowCount: number;
   columns: DataColumn[];
   data: Record<string, unknown>[];
+  geographyType?: string; // Profile ID: 'US', 'IN', 'GB', 'CA', 'WORLD', 'GENERIC'
 }
 
 export interface UploadHistory {
@@ -98,24 +101,7 @@ export const DOMAIN_CATEGORIES = [
   'Marketplace'
 ] as const;
 
-// US State mappings
-export const US_STATES: Record<string, string> = {
-  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
-  'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
-  'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 'ID': 'Idaho',
-  'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 'KS': 'Kansas',
-  'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi',
-  'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada',
-  'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 'NY': 'New York',
-  'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma',
-  'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah',
-  'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia',
-  'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District of Columbia'
-};
+// Re-export US_STATES for backward compatibility
+export const US_STATES: Record<string, string> = GEOGRAPHY_PROFILES.US.locationMap;
 
-export const STATE_NAME_TO_CODE: Record<string, string> = Object.entries(US_STATES).reduce(
-  (acc, [code, name]) => ({ ...acc, [name.toLowerCase()]: code }),
-  {}
-);
+export const STATE_NAME_TO_CODE: Record<string, string> = GEOGRAPHY_PROFILES.US.nameToCode;
