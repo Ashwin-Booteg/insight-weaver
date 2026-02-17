@@ -31,7 +31,7 @@ export function KPICards({ data, previousData }: KPICardsProps) {
       previousValue: previousData?.totalICP
     },
     {
-      title: 'States Covered',
+      title: 'Countries Covered',
       value: data.stateCount,
       icon: MapPin,
       variant: 'rose' as const,

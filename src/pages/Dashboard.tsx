@@ -162,8 +162,7 @@ const Dashboard = () => {
               </h1>
               <div className="flex items-center gap-2">
                 <p className="text-xs text-muted-foreground">
-                  {activeDataset.fileName} • {filteredData.length.toLocaleString()} records
-                  {profile.id !== 'US' && ` • ${profile.displayName}`}
+                  {activeDataset.fileName} • {filteredData.length.toLocaleString()} records • {profile.displayName}
                 </p>
                 {isSyncing ? (
                   <Badge variant="outline" className="gap-1 text-xs"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing</Badge>
@@ -258,14 +257,14 @@ const Dashboard = () => {
               <TabsContent value="map" className="mt-0">
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   <div className="xl:col-span-2 chart-container">
-                    <h3 className="text-sm font-bold text-foreground mb-4">
-                      {profile.displayName} Distribution by {mapMetricType === 'count' ? 'People Count' : mapMetricType === 'percentage' ? '% of Total' : 'ICP Count'}
-                    </h3>
+                     <h3 className="text-sm font-bold text-foreground mb-4">
+                       Global Distribution by {mapMetricType === 'count' ? 'People Count' : mapMetricType === 'percentage' ? '% of Total' : 'ICP Count'}
+                     </h3>
                     <GeoMap stateMetrics={stateMetrics} metricType={mapMetricType}
                       onStateClick={handleStateClick} selectedState={selectedState} profile={profile} />
                   </div>
                   <div className="chart-container">
-                    <h3 className="text-sm font-bold text-foreground mb-4">Top {profile.locationLabel}</h3>
+                    <h3 className="text-sm font-bold text-foreground mb-4">Top {profile.locationLabel || 'Countries'}</h3>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {stateMetrics.slice(0, 15).map((state, idx) => (
                         <button key={state.stateCode} onClick={() => handleStateClick(state.stateCode)}
