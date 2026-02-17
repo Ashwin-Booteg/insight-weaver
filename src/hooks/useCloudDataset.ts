@@ -52,17 +52,22 @@ export function useCloudDataset(userId: string | null) {
               .eq('dataset_id', ds.id)
               .limit(1000); // Limit for performance
 
+            const rawCols = ds.columns as any;
+            const cols = Array.isArray(rawCols) ? rawCols : rawCols?.columns || [];
+            const geographyType = Array.isArray(rawCols) ? undefined : rawCols?.geographyType;
+
             return {
               id: ds.id,
               fileName: ds.file_name,
               uploadedAt: new Date(ds.created_at),
               rowCount: ds.row_count,
-              columns: ds.columns as any[],
+              columns: cols,
               data: (rows || []).map(r => ({
                 ...r.row_data as Record<string, unknown>,
                 _state_normalized: r.state_normalized,
                 _industry_category: r.industry_category
-              }))
+              })),
+              geographyType
             };
           })
         );
@@ -120,14 +125,15 @@ export function useCloudDataset(userId: string | null) {
         isDomain: col.isDomain
       }));
 
-      // Insert dataset record
+      // Insert dataset record (store geographyType alongside columns)
+      const columnsPayload = { columns: slimColumns, geographyType: datasetInfo.geographyType || 'US' };
       const { data: insertedDataset, error: insertError } = await supabase
         .from('datasets')
         .insert({
           user_id: userId,
           file_name: file.name,
           row_count: datasetInfo.rowCount,
-          columns: slimColumns
+          columns: columnsPayload
         } as any)
         .select()
         .single();
@@ -166,7 +172,8 @@ export function useCloudDataset(userId: string | null) {
         uploadedAt: new Date(insertedDataset.created_at),
         rowCount: datasetInfo.rowCount,
         columns: datasetInfo.columns,
-        data: datasetInfo.data
+        data: datasetInfo.data,
+        geographyType: datasetInfo.geographyType
       };
 
       setDatasets(prev => [newDataset, ...prev]);
