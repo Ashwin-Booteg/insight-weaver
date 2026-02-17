@@ -85,7 +85,14 @@ export function useCloudDataset(userId: string | null) {
   };
 
   const activeDataset = useMemo(() => {
-    return datasets.find(d => d.id === activeDatasetId) || null;
+    const ds = datasets.find(d => d.id === activeDatasetId) || null;
+    if (ds && !Array.isArray(ds.columns)) {
+      // Safety: columns might be stored as { columns: [...], geographyType } object
+      const raw = ds.columns as any;
+      ds.columns = raw?.columns || [];
+      if (raw?.geographyType) ds.geographyType = raw.geographyType;
+    }
+    return ds;
   }, [datasets, activeDatasetId]);
 
   const uploadHistory: UploadHistory[] = useMemo(() => {
