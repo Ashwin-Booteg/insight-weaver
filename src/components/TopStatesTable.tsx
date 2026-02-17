@@ -8,23 +8,24 @@ interface TopStatesTableProps {
   onStateClick?: (stateCode: string) => void;
   selectedState?: string | null;
   limit?: number;
+  locationLabel?: string;
 }
 
-export function TopStatesTable({ stateMetrics, onStateClick, selectedState, limit = 10 }: TopStatesTableProps) {
+export function TopStatesTable({ stateMetrics, onStateClick, selectedState, limit = 10, locationLabel = 'Countries' }: TopStatesTableProps) {
   const topStates = stateMetrics.slice(0, limit);
   const maxValue = topStates[0]?.value || 1;
   
   if (topStates.length === 0) {
     return (
       <div className="chart-container flex items-center justify-center h-48 text-muted-foreground">
-        <p>No state data available</p>
+        <p>No location data available</p>
       </div>
     );
   }
   
   return (
     <div className="chart-container">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Top States</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-4">Top {locationLabel}</h3>
       
       <div className="space-y-2">
         {topStates.map((state, index) => (
@@ -78,7 +79,7 @@ export function TopStatesTable({ stateMetrics, onStateClick, selectedState, limi
       
       {stateMetrics.length > limit && (
         <p className="text-xs text-muted-foreground text-center mt-4">
-          Showing top {limit} of {stateMetrics.length} states
+          Showing top {limit} of {stateMetrics.length} {locationLabel.toLowerCase()}
         </p>
       )}
     </div>

@@ -76,12 +76,12 @@ export function StateDrilldown({
             <div>
               <DialogTitle className="text-xl">{stateName} ({stateCode})</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Detailed breakdown for this state
+                Detailed breakdown for this location
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => onFilter(stateCode)}>
               <MapPin className="w-4 h-4 mr-2" />
-              Filter to State
+              Filter to Location
             </Button>
           </div>
         </DialogHeader>
