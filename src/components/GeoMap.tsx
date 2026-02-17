@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
 import { StateMetric } from '@/types/analytics';
 import { GeographyProfile } from '@/types/geography';
 import { cn } from '@/lib/utils';
-import { MapPinOff } from 'lucide-react';
+import { MapPinOff, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 const USA_GEO_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
 const WORLD_GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -57,6 +57,12 @@ function USAMapView({ stateMetrics, metricType, onStateClick, selectedState, pro
     state: string;
     data: StateMetric | null;
   } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [center, setCenter] = useState<[number, number]>([-97, 38]);
+
+  const handleZoomIn = useCallback(() => setZoom(z => Math.min(z * 1.5, 8)), []);
+  const handleZoomOut = useCallback(() => setZoom(z => Math.max(z / 1.5, 1)), []);
+  const handleReset = useCallback(() => { setZoom(1); setCenter([-97, 38]); }, []);
   
   const metricMap = useMemo(() => {
     const map = new Map<string, StateMetric>();
@@ -110,7 +116,7 @@ function USAMapView({ stateMetrics, metricType, onStateClick, selectedState, pro
         className="w-full h-auto"
         style={{ maxHeight: '500px' }}
       >
-        <ZoomableGroup center={[-97, 38]} zoom={1}>
+        <ZoomableGroup center={center} zoom={zoom} onMoveEnd={({ coordinates, zoom: z }) => { setCenter(coordinates as [number, number]); setZoom(z); }} minZoom={1} maxZoom={8}>
           <Geographies geography={USA_GEO_URL}>
             {({ geographies }) =>
               geographies.map((geo) => {
@@ -150,6 +156,7 @@ function USAMapView({ stateMetrics, metricType, onStateClick, selectedState, pro
       
       {tooltipContent && <MapTooltip state={tooltipContent.state} data={tooltipContent.data} metricType={metricType} />}
       <MapLegend maxValue={maxValue} metricType={metricType} />
+      <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReset={handleReset} />
     </div>
   );
 }
@@ -160,6 +167,12 @@ function WorldMapView({ stateMetrics, metricType, onStateClick, selectedState, p
     state: string;
     data: StateMetric | null;
   } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [center, setCenter] = useState<[number, number]>([0, 20]);
+
+  const handleZoomIn = useCallback(() => setZoom(z => Math.min(z * 1.5, 8)), []);
+  const handleZoomOut = useCallback(() => setZoom(z => Math.max(z / 1.5, 1)), []);
+  const handleReset = useCallback(() => { setZoom(1); setCenter([0, 20]); }, []);
 
   const metricMap = useMemo(() => {
     const map = new Map<string, StateMetric>();
@@ -214,7 +227,7 @@ function WorldMapView({ stateMetrics, metricType, onStateClick, selectedState, p
         className="w-full h-auto"
         style={{ maxHeight: '500px' }}
       >
-        <ZoomableGroup center={[0, 20]} zoom={1}>
+        <ZoomableGroup center={center} zoom={zoom} onMoveEnd={({ coordinates, zoom: z }) => { setCenter(coordinates as [number, number]); setZoom(z); }} minZoom={1} maxZoom={8}>
           <Geographies geography={WORLD_GEO_URL}>
             {({ geographies }) =>
               geographies.map((geo) => {
@@ -255,11 +268,29 @@ function WorldMapView({ stateMetrics, metricType, onStateClick, selectedState, p
       
       {tooltipContent && <MapTooltip state={tooltipContent.state} data={tooltipContent.data} metricType={metricType} />}
       <MapLegend maxValue={maxValue} metricType={metricType} />
+      <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReset={handleReset} />
     </div>
   );
 }
 
 // ── Shared Components ──────────────────────────────────────
+function ZoomControls({ onZoomIn, onZoomOut, onReset }: { onZoomIn: () => void; onZoomOut: () => void; onReset: () => void }) {
+  return (
+    <div className="absolute top-4 left-4 flex flex-col gap-1 z-10">
+      <button onClick={onZoomIn} className="p-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-md hover:bg-accent transition-colors" title="Zoom in">
+        <ZoomIn className="w-4 h-4 text-foreground" />
+      </button>
+      <button onClick={onZoomOut} className="p-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-md hover:bg-accent transition-colors" title="Zoom out">
+        <ZoomOut className="w-4 h-4 text-foreground" />
+      </button>
+      <button onClick={onReset} className="p-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-md hover:bg-accent transition-colors" title="Reset view">
+        <RotateCcw className="w-4 h-4 text-foreground" />
+      </button>
+    </div>
+  );
+}
+
+// ── Shared Components (continued)
 function MapTooltip({ state, data, metricType }: { state: string; data: StateMetric | null; metricType: string }) {
   return (
     <div className="absolute top-4 right-4 map-tooltip animate-fade-in z-10">
