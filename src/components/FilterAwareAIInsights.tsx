@@ -7,7 +7,6 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { GlobalFilterState, ExtendedKPIData, RegionName, IndustryCategory } from '@/types/filters';
-import { US_STATES } from '@/types/analytics';
 
 interface FilterAwareAIInsightsProps {
   datasetId: string | null;
@@ -83,21 +82,20 @@ export function FilterAwareAIInsights({
       const topStatePercent = (kpis.stateBreakdown[kpis.topStateByPeople.state] / kpis.totalPeople) * 100;
       if (topStatePercent > 15) {
         concentrationRisk = {
-          finding: `${topStatePercent.toFixed(1)}% of people are concentrated in ${US_STATES[kpis.topStateByPeople.state] || kpis.topStateByPeople.state}`,
+          finding: `${topStatePercent.toFixed(1)}% of people are concentrated in ${kpis.topStateByPeople.state}`,
           percentage: topStatePercent,
-          entity: US_STATES[kpis.topStateByPeople.state] || kpis.topStateByPeople.state
+          entity: kpis.topStateByPeople.state
         };
       }
     }
 
     // Generate findings based on data
     if (kpis.totalPeople > 0) {
-      findings.push(`Under current filters, analyzing ${kpis.totalPeople.toLocaleString()} total people across ${kpis.statesIncluded} states.`);
+      findings.push(`Under current filters, analyzing ${kpis.totalPeople.toLocaleString()} total people across ${kpis.statesIncluded} locations.`);
     }
 
     if (kpis.topStateByPeople) {
-      const topStateName = US_STATES[kpis.topStateByPeople.state] || kpis.topStateByPeople.state;
-      findings.push(`${topStateName} leads with ${kpis.topStateByPeople.count.toLocaleString()} people (${((kpis.topStateByPeople.count / kpis.totalPeople) * 100).toFixed(1)}% of total).`);
+      findings.push(`${kpis.topStateByPeople.state} leads with ${kpis.topStateByPeople.count.toLocaleString()} people (${((kpis.topStateByPeople.count / kpis.totalPeople) * 100).toFixed(1)}% of total).`);
     }
 
     if (kpis.topRoleByPeople) {
@@ -119,7 +117,7 @@ export function FilterAwareAIInsights({
 
     // Generate opportunities
     if (kpis.bottomStateByPeople && kpis.totalPeople > 100) {
-      opportunities.push(`Expand presence in ${US_STATES[kpis.bottomStateByPeople.state] || kpis.bottomStateByPeople.state} - currently underrepresented with only ${kpis.bottomStateByPeople.count.toLocaleString()} people.`);
+      opportunities.push(`Expand presence in ${kpis.bottomStateByPeople.state} - currently underrepresented with only ${kpis.bottomStateByPeople.count.toLocaleString()} people.`);
     }
 
     if (sortedRegions.length > 1) {
@@ -133,7 +131,7 @@ export function FilterAwareAIInsights({
     }
 
     // Generate actions
-    actions.push(`Focus marketing efforts on top-performing states: ${Object.keys(kpis.stateBreakdown).slice(0, 3).map(s => US_STATES[s] || s).join(', ')}.`);
+    actions.push(`Focus marketing efforts on top-performing locations: ${Object.keys(kpis.stateBreakdown).slice(0, 3).join(', ')}.`);
     
     if (effectiveRoles.length < 10) {
       actions.push(`Expand role selection to capture broader audience segments - currently analyzing only ${effectiveRoles.length} roles.`);

@@ -28,7 +28,7 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     if (geographyType && GEOGRAPHY_PROFILES[geographyType]) {
       return GEOGRAPHY_PROFILES[geographyType];
     }
-    return GEOGRAPHY_PROFILES.US; // default fallback
+    return GEOGRAPHY_PROFILES.WORLD; // default fallback to global
   }, [geographyType]);
 
   const regionNames = useMemo(() => Object.keys(profile.regions), [profile]);

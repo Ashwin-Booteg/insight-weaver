@@ -91,24 +91,7 @@ const Dashboard = () => {
     if (!authLoading && !user) navigate('/auth');
   }, [authLoading, user, navigate]);
 
-  // Auto-load bundled dataset if no datasets exist
-  useEffect(() => {
-    if (!authLoading && user && !activeDataset && !isLoading && !isSyncing && uploadHistory.length === 0) {
-      const loadBundledData = async () => {
-        try {
-          const response = await fetch('/data/estimated_music_roles_by_state.xlsx');
-          const blob = await response.blob();
-          const file = new File([blob], 'US_Creative_Industry_Approximations_By_State_2.xlsx', {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          });
-          await uploadFile(file);
-        } catch (err) {
-          console.error('Failed to auto-load bundled dataset:', err);
-        }
-      };
-      loadBundledData();
-    }
-  }, [authLoading, user, activeDataset, isLoading, isSyncing, uploadHistory.length]);
+  // No auto-load — user uploads their own dataset for any country
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/auth'); };
   const handleStateClick = (stateCode: string) => { setSelectedState(stateCode); };
@@ -149,9 +132,9 @@ const Dashboard = () => {
               <BarChart3 className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-4xl font-black text-foreground mb-2 tracking-tight">
-              Starzopp <span className="text-primary">ICP Bank</span>
+              Starzopp <span className="text-primary">Global ICP Bank</span>
             </h1>
-            <p className="text-muted-foreground text-lg mb-2">Your Intelligent Customer Profile Data Repository</p>
+            <p className="text-muted-foreground text-lg mb-2">Your Global Intelligent Customer Profile Data Repository</p>
             <Badge variant="outline" className="gap-1.5 text-chart-teal border-chart-teal/30">
               <Cloud className="w-3 h-3" /> Cloud Synced
             </Badge>
@@ -174,8 +157,8 @@ const Dashboard = () => {
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-foreground">
-                <span className="text-primary">Starzopp</span> ICP Bank
+            <h1 className="text-lg font-black text-foreground">
+                <span className="text-primary">Starzopp</span> Global ICP Bank
               </h1>
               <div className="flex items-center gap-2">
                 <p className="text-xs text-muted-foreground">

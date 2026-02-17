@@ -89,35 +89,63 @@ const CANADA_REGIONS: Record<string, string[]> = {
 
 // ── World (Countries) Profile ──────────────────────────────
 const WORLD_LOCATION_MAP: Record<string, string> = {
-  'US': 'United States', 'CA': 'Canada', 'MX': 'Mexico',
+  // North America
+  'US': 'United States', 'CA': 'Canada', 'MX': 'Mexico', 'GT': 'Guatemala', 'CU': 'Cuba',
+  'HT': 'Haiti', 'DO': 'Dominican Republic', 'HN': 'Honduras', 'NI': 'Nicaragua',
+  'CR': 'Costa Rica', 'PA': 'Panama', 'JM': 'Jamaica', 'TT': 'Trinidad and Tobago',
+  // Europe
   'GB': 'United Kingdom', 'FR': 'France', 'DE': 'Germany', 'IT': 'Italy', 'ES': 'Spain',
   'PT': 'Portugal', 'NL': 'Netherlands', 'BE': 'Belgium', 'CH': 'Switzerland',
   'AT': 'Austria', 'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland',
   'IE': 'Ireland', 'PL': 'Poland', 'CZ': 'Czech Republic', 'RO': 'Romania',
   'GR': 'Greece', 'HU': 'Hungary', 'SK': 'Slovakia', 'BG': 'Bulgaria',
   'HR': 'Croatia', 'RS': 'Serbia', 'UA': 'Ukraine', 'RU': 'Russia',
-  'IN': 'India', 'CN': 'China', 'JP': 'Japan', 'KR': 'South Korea',
+  'LT': 'Lithuania', 'LV': 'Latvia', 'EE': 'Estonia', 'SI': 'Slovenia',
+  'BA': 'Bosnia and Herzegovina', 'MK': 'North Macedonia', 'AL': 'Albania',
+  'ME': 'Montenegro', 'MD': 'Moldova', 'BY': 'Belarus', 'IS': 'Iceland', 'LU': 'Luxembourg',
+  'MT': 'Malta', 'CY': 'Cyprus',
+  // Asia
+  'IN': 'India', 'CN': 'China', 'JP': 'Japan', 'KR': 'South Korea', 'KP': 'North Korea',
   'ID': 'Indonesia', 'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines',
   'MY': 'Malaysia', 'SG': 'Singapore', 'TW': 'Taiwan', 'BD': 'Bangladesh',
   'PK': 'Pakistan', 'LK': 'Sri Lanka', 'NP': 'Nepal', 'MM': 'Myanmar',
-  'AU': 'Australia', 'NZ': 'New Zealand',
+  'KH': 'Cambodia', 'LA': 'Laos', 'MN': 'Mongolia', 'AF': 'Afghanistan',
+  'UZ': 'Uzbekistan', 'KZ': 'Kazakhstan', 'TM': 'Turkmenistan', 'KG': 'Kyrgyzstan',
+  'TJ': 'Tajikistan', 'BN': 'Brunei',
+  // Oceania
+  'AU': 'Australia', 'NZ': 'New Zealand', 'PG': 'Papua New Guinea', 'FJ': 'Fiji',
+  // South America
   'BR': 'Brazil', 'AR': 'Argentina', 'CL': 'Chile', 'CO': 'Colombia',
   'PE': 'Peru', 'VE': 'Venezuela', 'EC': 'Ecuador', 'UY': 'Uruguay',
+  'PY': 'Paraguay', 'BO': 'Bolivia', 'GY': 'Guyana', 'SR': 'Suriname',
+  // Africa
   'ZA': 'South Africa', 'NG': 'Nigeria', 'KE': 'Kenya', 'EG': 'Egypt',
   'GH': 'Ghana', 'ET': 'Ethiopia', 'TZ': 'Tanzania', 'MA': 'Morocco',
+  'DZ': 'Algeria', 'TN': 'Tunisia', 'LY': 'Libya', 'SD': 'Sudan',
+  'AO': 'Angola', 'MZ': 'Mozambique', 'MG': 'Madagascar', 'CM': 'Cameroon',
+  'CI': "Côte d'Ivoire", 'NE': 'Niger', 'BF': 'Burkina Faso', 'ML': 'Mali',
+  'SN': 'Senegal', 'ZW': 'Zimbabwe', 'ZM': 'Zambia', 'MW': 'Malawi',
+  'RW': 'Rwanda', 'UG': 'Uganda', 'CD': 'Congo', 'CG': 'Republic of Congo',
+  'BW': 'Botswana', 'NA': 'Namibia', 'LS': 'Lesotho', 'SZ': 'Eswatini',
+  'GM': 'Gambia', 'GN': 'Guinea', 'SL': 'Sierra Leone', 'LR': 'Liberia',
+  'TG': 'Togo', 'BJ': 'Benin', 'MR': 'Mauritania', 'ER': 'Eritrea',
+  'DJ': 'Djibouti', 'SO': 'Somalia', 'SS': 'South Sudan', 'CF': 'Central African Republic',
+  'TD': 'Chad', 'GA': 'Gabon', 'GQ': 'Equatorial Guinea', 'MU': 'Mauritius',
+  // Middle East
   'AE': 'United Arab Emirates', 'SA': 'Saudi Arabia', 'IL': 'Israel',
   'TR': 'Turkey', 'QA': 'Qatar', 'KW': 'Kuwait', 'BH': 'Bahrain',
-  'OM': 'Oman', 'JO': 'Jordan', 'LB': 'Lebanon', 'IQ': 'Iraq', 'IR': 'Iran'
+  'OM': 'Oman', 'JO': 'Jordan', 'LB': 'Lebanon', 'IQ': 'Iraq', 'IR': 'Iran',
+  'YE': 'Yemen', 'SY': 'Syria', 'PS': 'Palestine', 'GE': 'Georgia', 'AM': 'Armenia', 'AZ': 'Azerbaijan'
 };
 
 const WORLD_REGIONS: Record<string, string[]> = {
-  'North America': ['US', 'CA', 'MX'],
-  'Europe': ['GB', 'FR', 'DE', 'IT', 'ES', 'PT', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'IE', 'PL', 'CZ', 'RO', 'GR', 'HU', 'SK', 'BG', 'HR', 'RS', 'UA', 'RU'],
-  'Asia': ['IN', 'CN', 'JP', 'KR', 'ID', 'TH', 'VN', 'PH', 'MY', 'SG', 'TW', 'BD', 'PK', 'LK', 'NP', 'MM'],
-  'Oceania': ['AU', 'NZ'],
-  'South America': ['BR', 'AR', 'CL', 'CO', 'PE', 'VE', 'EC', 'UY'],
-  'Africa': ['ZA', 'NG', 'KE', 'EG', 'GH', 'ET', 'TZ', 'MA'],
-  'Middle East': ['AE', 'SA', 'IL', 'TR', 'QA', 'KW', 'BH', 'OM', 'JO', 'LB', 'IQ', 'IR']
+  'North America': ['US', 'CA', 'MX', 'GT', 'CU', 'HT', 'DO', 'HN', 'NI', 'CR', 'PA', 'JM', 'TT'],
+  'Europe': ['GB', 'FR', 'DE', 'IT', 'ES', 'PT', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'IE', 'PL', 'CZ', 'RO', 'GR', 'HU', 'SK', 'BG', 'HR', 'RS', 'UA', 'RU', 'LT', 'LV', 'EE', 'SI', 'BA', 'MK', 'AL', 'ME', 'MD', 'BY', 'IS', 'LU', 'MT', 'CY'],
+  'Asia': ['IN', 'CN', 'JP', 'KR', 'KP', 'ID', 'TH', 'VN', 'PH', 'MY', 'SG', 'TW', 'BD', 'PK', 'LK', 'NP', 'MM', 'KH', 'LA', 'MN', 'AF', 'UZ', 'KZ', 'TM', 'KG', 'TJ', 'BN'],
+  'Oceania': ['AU', 'NZ', 'PG', 'FJ'],
+  'South America': ['BR', 'AR', 'CL', 'CO', 'PE', 'VE', 'EC', 'UY', 'PY', 'BO', 'GY', 'SR'],
+  'Africa': ['ZA', 'NG', 'KE', 'EG', 'GH', 'ET', 'TZ', 'MA', 'DZ', 'TN', 'LY', 'SD', 'AO', 'MZ', 'MG', 'CM', 'CI', 'NE', 'BF', 'ML', 'SN', 'ZW', 'ZM', 'MW', 'RW', 'UG', 'CD', 'CG', 'BW', 'NA', 'LS', 'SZ', 'GM', 'GN', 'SL', 'LR', 'TG', 'BJ', 'MR', 'ER', 'DJ', 'SO', 'SS', 'CF', 'TD', 'GA', 'GQ', 'MU'],
+  'Middle East': ['AE', 'SA', 'IL', 'TR', 'QA', 'KW', 'BH', 'OM', 'JO', 'LB', 'IQ', 'IR', 'YE', 'SY', 'PS', 'GE', 'AM', 'AZ']
 };
 
 // ── Build profiles ─────────────────────────────────────────
