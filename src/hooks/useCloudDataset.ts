@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DatasetInfo, FilterState, KPIData, StateMetric, ICPConfig, UploadHistory, US_STATES, INDUSTRY_CATEGORIES } from '@/types/analytics';
+import { DatasetInfo, FilterState, KPIData, StateMetric, ICPConfig, UploadHistory, INDUSTRY_CATEGORIES } from '@/types/analytics';
+import { GEOGRAPHY_PROFILES } from '@/types/geography';
 import { parseExcelFile, getUniqueValues, getNumericRange, categorizeIndustry, normalizeStateValue } from '@/utils/dataParser';
 import { toast } from 'sonner';
 
@@ -54,7 +55,7 @@ export function useCloudDataset(userId: string | null) {
 
             const rawCols = ds.columns as any;
             const cols = Array.isArray(rawCols) ? rawCols : rawCols?.columns || [];
-            const geographyType = Array.isArray(rawCols) ? undefined : rawCols?.geographyType;
+            const geographyType = Array.isArray(rawCols) ? 'WORLD' : (rawCols?.geographyType || 'WORLD');
 
             return {
               id: ds.id,
@@ -133,7 +134,7 @@ export function useCloudDataset(userId: string | null) {
       }));
 
       // Insert dataset record (store geographyType alongside columns)
-      const columnsPayload = { columns: slimColumns, geographyType: datasetInfo.geographyType || 'US' };
+      const columnsPayload = { columns: slimColumns, geographyType: datasetInfo.geographyType || 'WORLD' };
       const { data: insertedDataset, error: insertError } = await supabase
         .from('datasets')
         .insert({
@@ -154,10 +155,15 @@ export function useCloudDataset(userId: string | null) {
       const stateColumn = datasetInfo.columns.find(c => c.isState);
       const industryColumn = datasetInfo.columns.find(c => c.isIndustry);
 
+      // Use detected geography profile for normalization
+      const detectedProfile = datasetInfo.geographyType && GEOGRAPHY_PROFILES[datasetInfo.geographyType]
+        ? GEOGRAPHY_PROFILES[datasetInfo.geographyType]
+        : GEOGRAPHY_PROFILES.WORLD;
+
       const rowsToInsert = datasetInfo.data.map(row => ({
         dataset_id: insertedDataset.id,
         row_data: JSON.parse(JSON.stringify(row)),
-        state_normalized: stateColumn ? normalizeStateValue(row[stateColumn.name]) : null,
+        state_normalized: stateColumn ? normalizeStateValue(row[stateColumn.name], detectedProfile) : null,
         industry_category: industryColumn ? categorizeIndustry(row[industryColumn.name]) : null
       }));
 
@@ -386,10 +392,14 @@ export function useCloudDataset(userId: string | null) {
 
     const total = filteredData.length;
 
+    // Use active dataset's geography profile for location names
+    const geoType = activeDataset?.geographyType;
+    const geoProfile = geoType && GEOGRAPHY_PROFILES[geoType] ? GEOGRAPHY_PROFILES[geoType] : GEOGRAPHY_PROFILES.WORLD;
+
     return Object.entries(stateData)
       .map(([stateCode, data]) => ({
         stateCode,
-        stateName: US_STATES[stateCode] || stateCode,
+        stateName: geoProfile.locationMap[stateCode] || stateCode,
         value: data.count,
         percentage: total > 0 ? (data.count / total) * 100 : 0,
         icpCount: data.icpCount,
