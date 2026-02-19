@@ -1,146 +1,87 @@
 
+# Unified Multi-Dataset Backend — Append All Excels Into One View
 
-# Make the Dashboard Globally Compatible (Any Country, Any Region)
+## What The User Is Asking For
 
-## Problem
-The entire system is hardcoded for US data only:
-- `US_STATES` dictionary maps 51 US state codes to names
-- `US_REGIONS` groups states into 4 US Census regions (Northeast, Midwest, South, West)
-- The USA choropleth map only renders US geography
-- Region/state filters, KPIs, and charts all assume US state codes
-- The data parser only normalizes US state names/codes
-- The `classifyRoleIndustry` function is hardcoded to 3 entertainment industries
-
-When you upload data from India, UK, Brazil, or any other country, the system cannot understand or visualize it.
-
-## Solution: Dynamic Geography Detection
-
-Instead of hardcoding regions and countries, the system will **auto-detect the geographic scope** from the uploaded data and adapt all components accordingly.
-
-### How It Works (User Perspective)
-
-1. You upload an Excel file with a column like "State", "Province", "Country", "Region", or "City"
-2. The system scans the values and determines whether it is US states, Indian states, UK counties, countries, or generic text regions
-3. All charts, filters, KPIs, and maps automatically adapt to the detected geography
-4. If the data contains country names, the map switches from US choropleth to a World map
-5. If the data contains Indian states, it groups them into Indian regions (North, South, East, West, Central, Northeast)
-6. For any unrecognized geography, the system treats the location column as generic categories and still builds all charts without a map
+Right now, each Excel file you upload is stored separately in the backend. You can only view **one file at a time** — you have to switch between them manually. The user wants all uploaded Excel files to be **combined into a single unified dataset** so the dashboard shows data from every file at once, with full filtering and map support.
 
 ---
 
-## Technical Plan
+## Current State (Problems to Fix)
 
-### 1. New File: `src/types/geography.ts` -- Universal Geography System
-
-Create a geography registry that replaces the hardcoded `US_STATES` and `US_REGIONS`:
-
-- Define a `GeographyProfile` interface with: `countryCode`, `locationMap` (code-to-name), `regions` (region-to-locations grouping), and `displayName`
-- Include built-in profiles for: **US** (51 states, 4 Census regions), **India** (28 states + 8 UTs, 6 regions), **UK** (4 nations), **Canada** (13 provinces/territories, 5 regions), **Generic** (fallback)
-- Add a `detectGeography(values: string[])` function that samples the location column values, scores them against each profile, and returns the best match
-- Add helper functions: `getRegionFromLocation(code, profile)`, `getLocationsFromRegions(regions, profile)`, `getLocationName(code, profile)`
-
-### 2. Modify: `src/types/filters.ts` -- Remove US-Only Types
-
-- Replace `US_REGIONS` constant with a dynamic `regions` field sourced from the detected `GeographyProfile`
-- Change `RegionName` from a hardcoded union type to `string` (dynamic based on detected geography)
-- Update `getRegionFromState` and `getStatesFromRegions` to accept a `GeographyProfile` parameter
-- Rename "state" references to "location" in type names (e.g., `StateSummary` becomes `LocationSummary`) for clarity
-
-### 3. Modify: `src/types/analytics.ts` -- Generalize Location Types
-
-- Replace `US_STATES` and `STATE_NAME_TO_CODE` with imports from the geography system
-- Update `StateMetric` to `LocationMetric` (rename `stateCode`/`stateName` to `locationCode`/`locationName`)
-- Keep backward compatibility by re-exporting `US_STATES` from the geography module
-
-### 4. Modify: `src/utils/dataParser.ts` -- Auto-Detect Geography on Upload
-
-- After reading the Excel file and detecting a location column (isState/isCity), sample the values
-- Call `detectGeography(sampleValues)` to determine the country/geography profile
-- Store the detected `geographyType` (e.g., `"US"`, `"IN"`, `"GENERIC"`) as metadata on the `DatasetInfo` object
-- Update `normalizeStateValue` to use the matched profile's location map for normalization
-- Add new column detection keywords for international data: "province", "prefecture", "county", "territoire", "bundesland"
-
-### 5. Modify: `src/hooks/useGlobalFilters.ts` -- Dynamic Regions
-
-- Accept the detected `GeographyProfile` as input (derived from dataset metadata)
-- Replace all `US_REGIONS` references with `profile.regions`
-- Replace all `US_STATES` references with `profile.locationMap`
-- `getRegionFromState` and `getStatesFromRegions` will use the profile
-- `regionIndustryData` and `roleRegionData` will use dynamic region keys from the profile instead of hardcoded Northeast/Midwest/South/West
-
-### 6. Modify: `src/components/USAMap.tsx` -- Conditional Map Rendering
-
-- Rename to `GeoMap.tsx`
-- If detected geography is `"US"`: render current USA choropleth (no change)
-- If detected geography is a supported country with a TopoJSON map (world, India, etc.): render that map using `react-simple-maps` with the appropriate TopoJSON URL
-- If detected geography is `"GENERIC"`: hide the map tab entirely and show a message like "Map not available for this dataset"
-- Add a World map option using `https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json` for country-level data
-
-### 7. Modify: `src/components/charts/AdvancedCharts.tsx` -- Dynamic Region Colors and Labels
-
-- Replace hardcoded `REGION_COLORS` with a dynamic color generator that assigns colors based on the profile's region names
-- `RegionIndustryStackedChart` and `RoleRegionStackedChart` will read region keys from the profile instead of hardcoded values
-- `TopStatesChart` / `BottomStatesChart` will use `profile.locationMap` for display names
-
-### 8. Modify: `src/components/charts/SunburstChart.tsx` -- Dynamic Hierarchy
-
-- Replace hardcoded `US_REGIONS` and `REGION_COLORS` with the detected profile's regions
-- The hierarchy remains Region -> Location -> Roles but with dynamic region/location names
-- Color generation will use an algorithmic palette based on region count
-
-### 9. Modify: `src/components/filters/GlobalFilterBar.tsx` -- Dynamic Region/State Labels
-
-- Region filter popover: dynamically list regions from the profile (not hardcoded 4)
-- State filter popover: show locations from the profile with proper names
-- Update labels: "States" becomes "Locations" or the profile-specific term (e.g., "States" for US, "Provinces" for Canada)
-
-### 10. Modify: `src/pages/Dashboard.tsx` -- Pass Geography Profile Through
-
-- Derive the `GeographyProfile` from the active dataset's metadata
-- Pass it to `useGlobalFilters`, `GeoMap`, `GlobalFilterBar`, `SunburstChart`, and `AdvancedCharts`
-- Update map tab title from "USA Distribution" to dynamic label (e.g., "Geographic Distribution")
-
-### 11. Modify: `src/components/ExtendedKPICards.tsx` -- Dynamic Labels
-
-- Replace "States Included" with "Locations Included"
-- Replace "Regions Included" with dynamic label from profile
-- Update top/bottom state labels to use profile terminology
-
-### 12. Database: `dataset_rows` table -- No schema change needed
-
-- The `state_normalized` column already stores normalized location codes as text
-- The `industry_category` column remains unchanged
-- Geography type will be stored in the `datasets.columns` JSONB metadata
+1. **One dataset at a time**: The dashboard shows only the "active" dataset. Switching loses context of other files.
+2. **Row limit of 1,000**: When loading from the backend, only 1,000 rows are fetched per dataset — larger files get cut off.
+3. **Duplicate datasets**: The database currently has many duplicates from previous uploads of the same file (multiple copies of the Europe and US files).
+4. **No merge logic**: There's no concept of combining datasets that share the same column structure (e.g., two Excel files with the same role columns but different countries).
 
 ---
 
-## Supported Geography Profiles (Built-in)
+## What Will Be Built
 
-| Profile | Locations | Regions | Map |
-|---------|-----------|---------|-----|
-| United States | 51 (states + DC) | 4 (Census regions) | USA choropleth |
-| India | 36 (states + UTs) | 6 (North, South, East, West, Central, NE) | World map highlight |
-| Canada | 13 (provinces + territories) | 5 (Atlantic, Central, Prairies, West Coast, North) | World map highlight |
-| United Kingdom | 4 (nations) | 4 (England, Scotland, Wales, NI) | World map highlight |
-| Countries (World) | 195+ | 7 (continents) | World choropleth |
-| Generic | Auto-detected from data | Auto-grouped or none | No map |
+### 1. Backend — Smarter Data Loading
+- Remove the 1,000-row limit when fetching dataset rows from the backend, using pagination to load all rows correctly.
+- Add a **"Source Dataset"** tag to each row in the combined view (so you know which file each row came from).
+
+### 2. Combined Dataset View — "Merge All Compatible"
+- Add a **"Merge All"** toggle/button in the dataset manager dialog.
+- When enabled, all datasets that share the same column structure get merged into one unified view in the dashboard.
+- The system checks if column names match before merging (compatible = same role/location columns).
+- Each merged row is tagged with its source filename.
+
+### 3. Dataset Manager UI — Enhanced Dialog
+- The current "Upload Dataset" dialog becomes a full **Dataset Manager**:
+  - Shows all uploaded files with row counts and upload dates.
+  - "Active" badge on the currently selected dataset.
+  - **Merge All** button that combines compatible datasets.
+  - **Delete** button per file.
+  - Upload zone for new files.
+- A clear indicator in the header showing: "3 files merged · 122 rows total".
+
+### 4. Dashboard Updates
+- The header now shows **merged dataset info** when multiple files are combined.
+- KPI cards, maps, and charts all reflect the merged data automatically.
+- The filter bar shows all countries/locations from all merged files.
+
+### 5. Fix the Row Limit
+- Replace the `limit(1000)` query with paginated loading: fetch rows in batches of 1,000 until all are loaded.
+- This ensures large files (e.g., 10,000+ rows) are fully visible.
 
 ---
 
-## Files Changed Summary
+## Technical Details
 
-| File | Action |
-|------|--------|
-| `src/types/geography.ts` | **NEW** -- Universal geography profiles and detection |
-| `src/types/filters.ts` | Modify -- Use dynamic regions, rename state to location |
-| `src/types/analytics.ts` | Modify -- Generalize location types |
-| `src/utils/dataParser.ts` | Modify -- Auto-detect geography on upload |
-| `src/hooks/useGlobalFilters.ts` | Modify -- Accept geography profile, dynamic regions |
-| `src/components/USAMap.tsx` | Modify -- Rename to GeoMap, conditional rendering |
-| `src/components/charts/AdvancedCharts.tsx` | Modify -- Dynamic region colors/keys |
-| `src/components/charts/SunburstChart.tsx` | Modify -- Dynamic hierarchy |
-| `src/components/filters/GlobalFilterBar.tsx` | Modify -- Dynamic region/location lists |
-| `src/pages/Dashboard.tsx` | Modify -- Pass geography profile |
-| `src/components/ExtendedKPICards.tsx` | Modify -- Dynamic labels |
-| `src/components/FilteredStateTable.tsx` | Modify -- Dynamic location names |
+### Files to Change
 
+```text
+src/hooks/useCloudDataset.ts     — Remove row limit, add merge logic, paginated fetch
+src/pages/Dashboard.tsx          — Update header to show merged state, pass merged data
+src/components/FileUpload.tsx    — Enhance UploadHistoryList with merge toggle + active state
+```
+
+### Merge Logic
+When the user clicks "Merge All":
+- All datasets in their account are fetched from the backend.
+- The system checks which ones share a common set of column names (intersection of role columns).
+- Compatible datasets are merged by concatenating their rows.
+- A `_source_file` field is added to each row for traceability.
+- The merged result is used as the active data source for all dashboard components.
+
+### Pagination Fix
+```
+Current:  .limit(1000)   ← truncates large files
+Fixed:    fetch in batches of 1000, loop until no more rows returned
+```
+
+### No Database Schema Changes Needed
+All data is already stored correctly in `datasets` and `dataset_rows` tables. This is purely a frontend data-loading and merging change.
+
+---
+
+## What You'll See After
+
+- Upload the European Excel → it appears in the dataset manager.
+- Click "Merge All" → the dashboard immediately shows all rows from all compatible files combined.
+- The world map shows every country from every file.
+- KPI cards show totals across all files.
+- The header reads: e.g., "2 files merged · 72 rows · World".
+- Individual files can still be viewed solo by clicking them in the manager.
