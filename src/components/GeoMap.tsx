@@ -201,13 +201,49 @@ function WorldMapView({ stateMetrics, metricType, onStateClick, selectedState, p
       map[name.toLowerCase()] = code;
       map[code.toLowerCase()] = code;
     }
+    // Extra aliases for common TopoJSON name differences
+    const ALIASES: Record<string, string> = {
+      'united states of america': 'US',
+      'united states': 'US',
+      'usa': 'US',
+      'uk': 'GB',
+      'great britain': 'GB',
+      'russia': 'RU',
+      'south korea': 'KR',
+      'north korea': 'KP',
+      'czech republic': 'CZ',
+      'czechia': 'CZ',
+      'democratic republic of the congo': 'CD',
+      'republic of the congo': 'CG',
+      'côte d\'ivoire': 'CI',
+      'ivory coast': 'CI',
+      'myanmar': 'MM',
+      'burma': 'MM',
+      'taiwan': 'TW',
+      'republic of china': 'TW',
+      'iran': 'IR',
+      'turkey': 'TR',
+      'north macedonia': 'MK',
+      'vietnam': 'VN',
+      'viet nam': 'VN',
+      'laos': 'LA',
+      'bosnia and herzegovina': 'BA',
+    };
+    for (const [alias, code] of Object.entries(ALIASES)) {
+      if (!map[alias]) map[alias] = code;
+    }
     return map;
   }, [profile]);
 
   const getCodeFromGeo = (geo: any): string | null => {
     const props = geo.properties;
-    const name = (props?.name || '').toLowerCase();
-    return nameToMetricCode[name] || null;
+    const name = (props?.name || '').toLowerCase().trim();
+    // Try exact match first, then partial match
+    if (nameToMetricCode[name]) return nameToMetricCode[name];
+    // Try removing "the " prefix
+    const withoutThe = name.replace(/^the /, '');
+    if (nameToMetricCode[withoutThe]) return nameToMetricCode[withoutThe];
+    return null;
   };
 
   const getStateValue = (code: string): number => {
