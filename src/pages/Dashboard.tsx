@@ -29,6 +29,7 @@ import { getLocationName } from '@/types/geography';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -40,6 +41,7 @@ const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
 
   const {
     activeDataset, activeDatasetId, setActiveDatasetId,
@@ -206,7 +208,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-2">
             {hasData && <ICPConfigDialog config={icpConfig} onConfigChange={setICPConfig} columns={activeDataset.columns} />}
 
-            {/* Append Data Dialog — clean, no history */}
+            {/* Append Data Dialog */}
             <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium shadow-lg shadow-primary/20">
@@ -215,8 +217,12 @@ const Dashboard = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md border border-border bg-card rounded-2xl p-0 overflow-hidden">
                 <div className="p-6 border-b border-border">
-                  <DialogTitle className="text-base font-semibold">Append Data</DialogTitle>
-                  <p className="text-xs text-muted-foreground mt-1">Upload an Excel file to add it to your data bank. Same filenames are replaced automatically.</p>
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-semibold">Append Data</DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground mt-1">
+                      Upload an Excel file to add it to your data bank. Same filenames are replaced automatically.
+                    </DialogDescription>
+                  </DialogHeader>
                 </div>
                 <div className="p-6">
                   <FileUpload onUpload={async (file) => {
@@ -230,7 +236,7 @@ const Dashboard = () => {
             </Dialog>
 
             {/* Manage datasets */}
-            <Dialog>
+            <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground">
                   <Settings2 className="w-3.5 h-3.5" />
@@ -239,19 +245,27 @@ const Dashboard = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md border border-border bg-card rounded-2xl p-0 overflow-hidden">
                 <div className="p-6 border-b border-border">
-                  <DialogTitle className="text-base font-semibold">Manage Datasets</DialogTitle>
-                  <p className="text-xs text-muted-foreground mt-1">{uploadHistory.length} file{uploadHistory.length !== 1 ? 's' : ''} in your data bank</p>
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-semibold">Manage Datasets</DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground mt-1">
+                      {uploadHistory.length} file{uploadHistory.length !== 1 ? 's' : ''} in your data bank
+                    </DialogDescription>
+                  </DialogHeader>
                 </div>
                 <div className="p-4">
-                  <UploadHistoryList
-                    history={uploadHistory}
-                    activeId={activeDatasetId}
-                    onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); }}
-                    onDelete={deleteDataset}
-                    mergeAll={mergeAll}
-                    onMergeAllChange={setMergeAll}
-                    mergeSummary={mergeSummary}
-                  />
+                  {uploadHistory.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-6">No datasets uploaded yet.</p>
+                  ) : (
+                    <UploadHistoryList
+                      history={uploadHistory}
+                      activeId={activeDatasetId}
+                      onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); setManageDialogOpen(false); }}
+                      onDelete={deleteDataset}
+                      mergeAll={mergeAll}
+                      onMergeAllChange={setMergeAll}
+                      mergeSummary={mergeSummary}
+                    />
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
