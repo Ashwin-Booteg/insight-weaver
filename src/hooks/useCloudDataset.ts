@@ -133,16 +133,22 @@ export function useCloudDataset(userId: string | null) {
     if (datasets.length === 0) return null;
     if (datasets.length === 1) return datasets[0];
 
-    // Find a common set of columns across all datasets (by name)
-    const allColumnSets = datasets.map(d => new Set((d.columns as any[]).map((c: any) => c.name)));
-    const commonColumnNames = [...allColumnSets[0]].filter(name =>
-      allColumnSets.every(set => set.has(name))
-    );
-
-    // Use columns from first dataset that exist in all
-    const mergedColumns = (datasets[0].columns as any[]).filter((c: any) =>
-      commonColumnNames.includes(c.name)
-    );
+    // Union ALL columns across all datasets (not intersection) so no role data is lost
+    const columnMap = new Map<string, any>();
+    for (const ds of datasets) {
+      for (const col of (ds.columns as any[])) {
+        if (!columnMap.has(col.name)) {
+          columnMap.set(col.name, col);
+        } else {
+          // Prefer number type if any dataset says it's numeric
+          const existing = columnMap.get(col.name);
+          if (col.type === 'number' && existing.type !== 'number') {
+            columnMap.set(col.name, col);
+          }
+        }
+      }
+    }
+    const mergedColumns = Array.from(columnMap.values());
 
     // Merge all rows, tagging each with source file
     const mergedData = datasets.flatMap(ds =>
