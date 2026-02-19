@@ -18,7 +18,8 @@ import {
   RoleRegionStackedChart, RegionIndustryHeatmap
 } from '@/components/charts/AdvancedCharts';
 import { SunburstChart } from '@/components/charts/SunburstChart';
-import { BarChart3, Map, Table, Upload, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw, LayoutGrid, Database, Plus, Settings2, X } from 'lucide-react';
+import { BarChart3, Map, Table, Upload, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw, LayoutGrid, Database, Plus, Settings2, X, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, Session } from '@supabase/supabase-js';
@@ -37,6 +38,7 @@ import {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -269,6 +271,15 @@ const Dashboard = () => {
                 </div>
               </DialogContent>
             </Dialog>
+
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+              title="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </Button>
 
             <Button variant="ghost" size="sm" onClick={handleLogout} className="h-8 rounded-lg text-xs text-muted-foreground hover:text-destructive">
               <LogOut className="w-3.5 h-3.5" />
