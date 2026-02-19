@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Users, MapPin, Globe2, TrendingUp, TrendingDown, Briefcase, Factory, BarChart3, Percent, Hash, Target, Crosshair, Layers, Activity, Zap } from 'lucide-react';
+import {
+  Users, MapPin, Globe2, TrendingUp, TrendingDown, Briefcase, Factory,
+  BarChart3, Target, Crosshair, Layers, Activity, Zap, ArrowUpRight,
+  ArrowDownRight, Minus, Star, Award, PieChart, Hash
+} from 'lucide-react';
 import { ExtendedKPIData, IndustryCategory } from '@/types/filters';
 import { GeographyProfile, getLocationName, getRegionColors } from '@/types/geography';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface TargetingMetrics {
   concentrationIndex: number;
@@ -29,240 +32,436 @@ export function ExtendedKPICards({ data, profile, targetingMetrics }: ExtendedKP
   const totalRegions = profile ? Object.keys(profile.regions).length : 4;
   const regionColors = profile ? getRegionColors(profile) : {};
 
+  // Derived metrics
+  const sortedStateEntries = Object.entries(data.stateBreakdown).sort((a, b) => b[1] - a[1]);
+  const topStatePct = data.totalPeople > 0 && sortedStateEntries[0]
+    ? ((sortedStateEntries[0][1] / data.totalPeople) * 100).toFixed(1)
+    : '0';
+
+  const sortedRoleEntries = Object.entries(data.roleBreakdown).sort((a, b) => b[1] - a[1]);
+  const topRolePct = data.totalPeople > 0 && sortedRoleEntries[0]
+    ? ((sortedRoleEntries[0][1] / data.totalPeople) * 100).toFixed(1)
+    : '0';
+
+  const industryEntries = Object.entries(data.industryBreakdown).sort((a, b) => b[1] - a[1]);
+  const dominantIndustry = industryEntries[0];
+  const dominantPct = data.totalPeople > 0 && dominantIndustry
+    ? ((dominantIndustry[1] / data.totalPeople) * 100).toFixed(1)
+    : '0';
+
+  // Gini-like concentration: top 10% of locations hold X% of workforce
+  const top10Pct = Math.ceil(sortedStateEntries.length * 0.1);
+  const top10Total = sortedStateEntries.slice(0, top10Pct).reduce((s, [, v]) => s + v, 0);
+  const giniProxy = data.totalPeople > 0 ? Math.round((top10Total / data.totalPeople) * 100) : 0;
+
   return (
-    <div className="space-y-5">
-      {/* Hero + 4 KPIs in one row */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Hero KPI */}
-        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 via-primary to-accent/80 p-6 text-white">
-          <div className="absolute inset-0 dot-grid opacity-10" />
-          <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-          <div className="relative">
-            <p className="text-[11px] font-semibold uppercase tracking-widest opacity-70 mb-2">Total People</p>
-            <p className="text-5xl font-black tracking-tight">{data.totalPeople.toLocaleString()}</p>
-            <p className="text-xs opacity-60 mt-2">
-              {data.statesIncluded} {locationLabel.toLowerCase()} · {data.roleCoverage} roles selected
+    <div className="space-y-4">
+
+      {/* ── Row 1: Hero + stat grid ── */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Hero */}
+        <div className="col-span-12 md:col-span-4 relative overflow-hidden rounded-2xl p-6 hero-kpi">
+          <div className="absolute inset-0 dot-grid opacity-[0.08]" />
+          <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+          <div className="relative z-10">
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60 mb-3">Total Workforce</p>
+            <p className="text-6xl font-black tracking-tight text-white leading-none">
+              {formatCompact(data.totalPeople)}
             </p>
+            <p className="text-sm text-white/50 mt-1 tabular-nums">{data.totalPeople.toLocaleString()} people</p>
+            <div className="mt-5 pt-4 border-t border-white/10 grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] text-white/50 font-medium">{locationLabel}</p>
+                <p className="text-xl font-bold text-white">{data.statesIncluded}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/50 font-medium">Roles Active</p>
+                <p className="text-xl font-bold text-white">{data.roleCoverage}</p>
+              </div>
+            </div>
           </div>
-          <div className="absolute bottom-4 right-4 p-2.5 rounded-xl bg-white/10 backdrop-blur-sm">
-            <Users className="w-5 h-5" />
+          <div className="absolute bottom-5 right-5 w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+            <Users className="w-5 h-5 text-white" />
           </div>
         </div>
 
-        {/* 4 small KPIs */}
-        <div className="lg:col-span-3 grid grid-cols-2 gap-4">
-          <MiniKPI label={`${locationLabel}`} value={data.statesIncluded} icon={MapPin} accent="teal" />
-          <MiniKPI label={regionLabel} value={data.regionsIncluded} icon={Globe2} accent="purple" note={`of ${totalRegions}`} />
-          <MiniKPI label={`Avg / ${locationLabel.replace(/s$/, '')}`} value={data.avgPeoplePerState} icon={BarChart3} accent="amber" />
-          <MiniKPI label="Roles Selected" value={data.roleCoverage} icon={Briefcase} accent="rose" />
+        {/* 8 mini stats */}
+        <div className="col-span-12 md:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatTile
+            label={regionLabel}
+            value={data.regionsIncluded}
+            note={`of ${totalRegions}`}
+            icon={Globe2}
+            accent="purple"
+          />
+          <StatTile
+            label={`Avg / ${locationLabel.replace(/s$/, '')}`}
+            value={formatCompact(data.avgPeoplePerState)}
+            rawValue={data.avgPeoplePerState.toLocaleString()}
+            icon={BarChart3}
+            accent="teal"
+          />
+          <StatTile
+            label="Top Location %"
+            value={`${topStatePct}%`}
+            note={data.topStateByPeople ? (profile ? getLocationName(data.topStateByPeople.state, profile) : data.topStateByPeople.state) : '—'}
+            icon={MapPin}
+            accent="amber"
+          />
+          <StatTile
+            label="Top Role %"
+            value={`${topRolePct}%`}
+            note={data.topRoleByPeople ? truncate(data.topRoleByPeople.role, 16) : '—'}
+            icon={Briefcase}
+            accent="rose"
+          />
+          <StatTile
+            label="Dominant Industry"
+            value={`${dominantPct}%`}
+            note={dominantIndustry ? dominantIndustry[0] : '—'}
+            icon={Factory}
+            accent="indigo"
+          />
+          <StatTile
+            label="Market Leader"
+            value={targetingMetrics ? `${targetingMetrics.topIndustryShare}%` : '—'}
+            note="Top industry share"
+            icon={Star}
+            accent="amber"
+          />
+          <StatTile
+            label="Top-10% Hold"
+            value={`${giniProxy}%`}
+            note={`${top10Pct} ${locationLabel.toLowerCase()}`}
+            icon={PieChart}
+            accent="rose"
+          />
+          <StatTile
+            label="Diversity Index"
+            value={targetingMetrics ? `${targetingMetrics.diversityScore}` : '—'}
+            note="Out of 100"
+            icon={Layers}
+            accent="teal"
+          />
         </div>
       </div>
 
-      {/* Targeting Intelligence */}
+      {/* ── Row 2: Intelligence cards + sparkbars ── */}
       {targetingMetrics && (
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
-            <Crosshair className="w-3.5 h-3.5 text-primary" /> Targeting Intelligence
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <IntelCard label="Concentration" value={`${targetingMetrics.concentrationIndex}%`} desc={`Top 3 hold ${targetingMetrics.concentrationIndex}%`} icon={Target} color="rose" />
-            <IntelCard label="Diversity Score" value={`${targetingMetrics.diversityScore}%`} desc="Distribution evenness" icon={Layers} color="teal" />
-            <IntelCard label="Avg per Role" value={targetingMetrics.avgPerRole.toLocaleString()} desc="People per role" icon={Activity} color="purple" />
-            <IntelCard label="Top 5 Share" value={`${targetingMetrics.top5Share}%`} desc="Of total workforce" icon={Zap} color="amber" />
+        <div className="grid grid-cols-12 gap-4">
+          {/* Intel cards */}
+          <div className="col-span-12 md:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <IntelCard label="Concentration" value={`${targetingMetrics.concentrationIndex}%`} sub="Top 3 locations" icon={Target} color="rose" bar={targetingMetrics.concentrationIndex} />
+            <IntelCard label="Diversity" value={`${targetingMetrics.diversityScore}`} sub="Spread evenness" icon={Layers} color="teal" bar={targetingMetrics.diversityScore} />
+            <IntelCard label="Avg / Role" value={formatCompact(targetingMetrics.avgPerRole)} sub="People per role" icon={Activity} color="purple" bar={Math.min(100, (targetingMetrics.avgPerRole / 5000) * 100)} />
+            <IntelCard label="Top 5 Share" value={`${targetingMetrics.top5Share}%`} sub="Top roles' weight" icon={Zap} color="amber" bar={targetingMetrics.top5Share} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
-                <MapPin className="w-3 h-3 text-chart-teal" /> Top {locationLabel}
-              </p>
-              <div className="space-y-2">
-                {targetingMetrics.top3Locations.map((loc, i) => (
-                  <div key={loc} className="flex items-center gap-2.5">
-                    <span className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-                      i === 0 ? "bg-chart-amber/20 text-chart-amber" : i === 1 ? "bg-muted text-muted-foreground" : "bg-chart-rose/10 text-chart-rose"
-                    )}>{i + 1}</span>
-                    <span className="text-xs font-medium text-foreground">{loc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Briefcase className="w-3 h-3 text-chart-purple" /> Top Roles
-              </p>
-              <div className="space-y-2">
-                {targetingMetrics.top5Roles.map((role, i) => (
-                  <div key={role} className="flex items-center gap-2.5">
-                    <span className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-                      i === 0 ? "bg-chart-amber/20 text-chart-amber" : i === 1 ? "bg-muted text-muted-foreground" : "bg-chart-rose/10 text-chart-rose"
-                    )}>{i + 1}</span>
-                    <span className="text-xs font-medium text-foreground truncate">{role}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Top 3 + Top 5 roles micro lists */}
+          <div className="col-span-12 md:col-span-4 grid grid-cols-1 gap-3">
+            <MicroList
+              title={`Top ${locationLabel}`}
+              icon={<MapPin className="w-3 h-3" />}
+              items={targetingMetrics.top3Locations}
+              colors={['text-chart-amber', 'text-muted-foreground', 'text-chart-rose']}
+              bgs={['bg-chart-amber/10', 'bg-muted/50', 'bg-chart-rose/10']}
+            />
           </div>
         </div>
       )}
 
-      {/* Highlight row */}
+      {/* ── Row 3: Highlight picks ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {data.topStateByPeople && (
-          <HighlightCard title={`Top ${locationLabel.replace(/s$/, '')}`}
+          <HighlightCard
+            title={`Best ${locationLabel.replace(/s$/, '')}`}
             primary={profile ? getLocationName(data.topStateByPeople.state, profile) : data.topStateByPeople.state}
-            secondary={data.topStateByPeople.count.toLocaleString()}
-            icon={<TrendingUp className="w-3.5 h-3.5 text-chart-emerald" />} />
+            secondary={`${data.topStateByPeople.count.toLocaleString()} people`}
+            badge={`${topStatePct}%`}
+            trend="up"
+          />
         )}
         {data.bottomStateByPeople && (
-          <HighlightCard title={`Lowest ${locationLabel.replace(/s$/, '')}`}
+          <HighlightCard
+            title={`Lowest ${locationLabel.replace(/s$/, '')}`}
             primary={profile ? getLocationName(data.bottomStateByPeople.state, profile) : data.bottomStateByPeople.state}
-            secondary={data.bottomStateByPeople.count.toLocaleString()}
-            icon={<TrendingDown className="w-3.5 h-3.5 text-chart-rose" />} />
+            secondary={`${data.bottomStateByPeople.count.toLocaleString()} people`}
+            badge="last"
+            trend="down"
+          />
         )}
         {data.topRoleByPeople && (
-          <HighlightCard title="Top Role"
-            primary={truncate(data.topRoleByPeople.role, 22)}
-            secondary={data.topRoleByPeople.count.toLocaleString()}
-            icon={<Briefcase className="w-3.5 h-3.5 text-chart-purple" />} />
+          <HighlightCard
+            title="Top Role"
+            primary={truncate(data.topRoleByPeople.role, 20)}
+            secondary={`${data.topRoleByPeople.count.toLocaleString()} people`}
+            badge={`${topRolePct}%`}
+            trend="up"
+          />
         )}
         {data.topIndustryByPeople && (
-          <HighlightCard title="Top Industry"
+          <HighlightCard
+            title="Top Industry"
             primary={data.topIndustryByPeople.industry}
-            secondary={data.topIndustryByPeople.count.toLocaleString()}
-            icon={<Factory className="w-3.5 h-3.5 text-chart-amber" />} />
+            secondary={`${data.topIndustryByPeople.count.toLocaleString()} people`}
+            badge={`${dominantPct}%`}
+            trend="neutral"
+          />
         )}
       </div>
 
-      {/* Breakdown bars */}
+      {/* ── Row 4: Breakdown bars side-by-side ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="chart-container">
+        {/* Industry */}
+        <div className="chart-container space-y-1">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Industry</p>
-            <div className="flex items-center gap-1 p-0.5 bg-muted rounded-lg">
-              <button onClick={() => setDisplayMode('absolute')}
-                className={cn('px-2 py-0.5 text-[10px] font-medium rounded-md transition-all', displayMode === 'absolute' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
-                #
-              </button>
-              <button onClick={() => setDisplayMode('percent')}
-                className={cn('px-2 py-0.5 text-[10px] font-medium rounded-md transition-all', displayMode === 'percent' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
-                %
-              </button>
-            </div>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Industry Split</p>
+            <ModeSwitcher mode={displayMode} onChange={setDisplayMode} />
           </div>
-          <div className="space-y-3">
-            {Object.entries(data.industryBreakdown).sort((a, b) => b[1] - a[1]).map(([industry, count]) => {
-              const pct = data.totalPeople > 0 ? (count / data.totalPeople) * 100 : 0;
-              return (
-                <div key={industry}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-medium text-foreground">{industry}</span>
-                    <span className="text-xs font-bold tabular-nums text-foreground">
-                      {displayMode === 'percent' ? `${pct.toFixed(1)}%` : count.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className={cn('h-full rounded-full transition-all duration-500',
-                      industry === 'Movie & Entertainment' ? 'bg-chart-rose' :
-                      industry === 'Music & Audio' ? 'bg-chart-purple' : 'bg-chart-amber'
-                    )} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {industryEntries.map(([industry, count], i) => {
+            const pct = data.totalPeople > 0 ? (count / data.totalPeople) * 100 : 0;
+            const barColor = industry === 'Movie & Entertainment' ? 'bg-chart-rose' :
+              industry === 'Music & Audio' ? 'bg-chart-purple' : 'bg-chart-amber';
+            return (
+              <BreakdownRow
+                key={industry}
+                label={industry}
+                value={displayMode === 'percent' ? `${pct.toFixed(1)}%` : formatCompact(count)}
+                pct={pct}
+                barColor={barColor}
+                rank={i + 1}
+              />
+            );
+          })}
         </div>
 
-        <div className="chart-container">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{regionLabel}</p>
-          <div className="space-y-3">
-            {Object.entries(data.regionBreakdown).sort((a, b) => b[1] - a[1]).map(([region, count]) => {
+        {/* Region */}
+        <div className="chart-container space-y-1">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{regionLabel} Split</p>
+            <ModeSwitcher mode={displayMode} onChange={setDisplayMode} />
+          </div>
+          {Object.entries(data.regionBreakdown)
+            .filter(([, v]) => v > 0)
+            .sort((a, b) => b[1] - a[1])
+            .map(([region, count], i) => {
               const pct = data.totalPeople > 0 ? (count / data.totalPeople) * 100 : 0;
               const color = regionColors[region];
               return (
-                <div key={region}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-medium text-foreground">{region}</span>
-                    <span className="text-xs font-bold tabular-nums text-foreground">
-                      {displayMode === 'percent' ? `${pct.toFixed(1)}%` : count.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: color || 'hsl(var(--primary))' }} />
+                <BreakdownRow
+                  key={region}
+                  label={region}
+                  value={displayMode === 'percent' ? `${pct.toFixed(1)}%` : formatCompact(count)}
+                  pct={pct}
+                  barColorRaw={color}
+                  rank={i + 1}
+                />
+              );
+            })}
+        </div>
+      </div>
+
+      {/* ── Row 5: Top roles mini bar chart ── */}
+      {targetingMetrics && targetingMetrics.top5Roles.length > 0 && (
+        <div className="chart-container">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Top Roles by Volume</p>
+            <span className="text-[10px] text-muted-foreground px-2 py-0.5 rounded-full bg-muted">Top {Math.min(10, sortedRoleEntries.length)}</span>
+          </div>
+          <div className="space-y-2">
+            {sortedRoleEntries.slice(0, 10).map(([role, count], i) => {
+              const pct = data.totalPeople > 0 ? (count / data.totalPeople) * 100 : 0;
+              const maxCount = sortedRoleEntries[0]?.[1] || 1;
+              const relWidth = (count / maxCount) * 100;
+              return (
+                <div key={role} className="flex items-center gap-3 group">
+                  <span className="text-[10px] font-bold text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-foreground truncate pr-2">{role}</span>
+                      <span className="text-xs font-bold tabular-nums text-foreground shrink-0">
+                        {formatCompact(count)} <span className="text-muted-foreground font-normal">({pct.toFixed(1)}%)</span>
+                      </span>
+                    </div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${relWidth}%`,
+                          background: `hsl(${243 + i * 8} 70% ${60 - i * 3}%)`
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function MiniKPI({ label, value, icon: Icon, accent, note }: {
-  label: string; value: number; icon: React.ComponentType<{ className?: string }>;
-  accent: 'teal' | 'purple' | 'amber' | 'rose'; note?: string;
+// ─── Sub-components ────────────────────────────────────────────────────────────
+
+function StatTile({ label, value, note, rawValue, icon: Icon, accent }: {
+  label: string;
+  value: string | number;
+  note?: string;
+  rawValue?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent: 'teal' | 'purple' | 'amber' | 'rose' | 'indigo';
 }) {
-  const colors = {
-    teal: 'text-chart-teal bg-chart-teal/10 border-chart-teal/20',
+  const palettes = {
+    teal:   'text-chart-teal   bg-chart-teal/10   border-chart-teal/20',
     purple: 'text-chart-purple bg-chart-purple/10 border-chart-purple/20',
-    amber: 'text-chart-amber bg-chart-amber/10 border-chart-amber/20',
-    rose: 'text-chart-rose bg-chart-rose/10 border-chart-rose/20',
+    amber:  'text-chart-amber  bg-chart-amber/10  border-chart-amber/20',
+    rose:   'text-chart-rose   bg-chart-rose/10   border-chart-rose/20',
+    indigo: 'text-primary      bg-primary/10      border-primary/20',
   };
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex items-start justify-between">
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between gap-3 group hover:border-primary/20 transition-all duration-200 hover:shadow-[0_0_16px_hsl(243_80%_62%/0.08)]">
+      <div className="flex items-start justify-between">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide leading-tight max-w-[70%]">{label}</p>
+        <div className={cn('p-1.5 rounded-lg border shrink-0', palettes[accent])}>
+          <Icon className="w-3 h-3" />
+        </div>
+      </div>
       <div>
-        <p className="text-[11px] text-muted-foreground font-medium mb-1">{label}</p>
-        <p className="text-2xl font-black tabular-nums text-foreground">{value.toLocaleString()}</p>
-        {note && <p className="text-[11px] text-muted-foreground mt-0.5">{note}</p>}
-      </div>
-      <div className={cn('p-2 rounded-lg border', colors[accent])}>
-        <Icon className="w-4 h-4" />
+        <p className="text-2xl font-black tabular-nums text-foreground leading-none" title={rawValue}>{value}</p>
+        {note && <p className="text-[10px] text-muted-foreground mt-1 truncate">{note}</p>}
       </div>
     </div>
   );
 }
 
-function IntelCard({ label, value, desc, icon: Icon, color }: {
-  label: string; value: string; desc: string; icon: React.ComponentType<{ className?: string }>; color: string;
+function IntelCard({ label, value, sub, icon: Icon, color, bar }: {
+  label: string; value: string; sub: string;
+  icon: React.ComponentType<{ className?: string }>; color: string; bar: number;
 }) {
-  const colors: Record<string, string> = {
-    rose: 'text-chart-rose bg-chart-rose/10 border-chart-rose/20',
-    teal: 'text-chart-teal bg-chart-teal/10 border-chart-teal/20',
+  const palettes: Record<string, string> = {
+    rose:   'text-chart-rose   bg-chart-rose/10   border-chart-rose/20',
+    teal:   'text-chart-teal   bg-chart-teal/10   border-chart-teal/20',
     purple: 'text-chart-purple bg-chart-purple/10 border-chart-purple/20',
-    amber: 'text-chart-amber bg-chart-amber/10 border-chart-amber/20',
+    amber:  'text-chart-amber  bg-chart-amber/10  border-chart-amber/20',
+  };
+  const barColors: Record<string, string> = {
+    rose: 'bg-chart-rose', teal: 'bg-chart-teal', purple: 'bg-chart-purple', amber: 'bg-chart-amber',
   };
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className={cn('inline-flex p-1.5 rounded-lg border mb-3', colors[color])}>
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3">
+      <div className={cn('inline-flex p-1.5 rounded-lg border w-fit', palettes[color])}>
         <Icon className="w-3.5 h-3.5" />
       </div>
-      <p className="text-xl font-black text-foreground tabular-nums">{value}</p>
-      <p className="text-[11px] font-semibold text-foreground/80 mt-0.5">{label}</p>
-      <p className="text-[11px] text-muted-foreground">{desc}</p>
+      <div>
+        <p className="text-2xl font-black text-foreground tabular-nums leading-none">{value}</p>
+        <p className="text-[11px] font-semibold text-foreground/80 mt-1">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{sub}</p>
+      </div>
+      {/* mini progress */}
+      <div className="h-0.5 bg-muted rounded-full overflow-hidden">
+        <div className={cn('h-full rounded-full transition-all duration-700', barColors[color])}
+          style={{ width: `${Math.min(100, Math.max(0, bar))}%` }} />
+      </div>
     </div>
   );
 }
 
-function HighlightCard({ title, primary, secondary, icon }: {
-  title: string; primary: string; secondary: string; icon: React.ReactNode;
+function MicroList({ title, icon, items, colors, bgs }: {
+  title: string; icon: React.ReactNode;
+  items: string[]; colors: string[]; bgs: string[];
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center gap-1.5 mb-2">
-        {icon}
-        <span className="text-[11px] text-muted-foreground font-medium">{title}</span>
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="text-muted-foreground">{icon}</span>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
       </div>
-      <p className="text-sm font-bold truncate text-foreground" title={primary}>{primary}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{secondary} people</p>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div key={item} className="flex items-center gap-2.5">
+            <span className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0', bgs[i] || 'bg-muted/50', colors[i] || 'text-muted-foreground')}>
+              {i + 1}
+            </span>
+            <span className="text-xs font-medium text-foreground truncate">{item}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-function truncate(str: string, length: number): string {
-  return str.length > length ? str.slice(0, length) + '…' : str;
+function HighlightCard({ title, primary, secondary, badge, trend }: {
+  title: string; primary: string; secondary: string; badge: string; trend: 'up' | 'down' | 'neutral';
+}) {
+  const TrendIcon = trend === 'up' ? ArrowUpRight : trend === 'down' ? ArrowDownRight : Minus;
+  const trendColor = trend === 'up' ? 'text-chart-emerald bg-chart-emerald/10' : trend === 'down' ? 'text-chart-rose bg-chart-rose/10' : 'text-muted-foreground bg-muted';
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 group hover:border-primary/20 transition-all duration-200">
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">{title}</p>
+        <span className={cn('inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold', trendColor)}>
+          <TrendIcon className="w-2.5 h-2.5" />{badge}
+        </span>
+      </div>
+      <p className="text-sm font-bold truncate text-foreground" title={primary}>{primary}</p>
+      <p className="text-[11px] text-muted-foreground mt-0.5">{secondary}</p>
+    </div>
+  );
+}
+
+function BreakdownRow({ label, value, pct, barColor, barColorRaw, rank }: {
+  label: string; value: string; pct: number; barColor?: string; barColorRaw?: string; rank: number;
+}) {
+  return (
+    <div className="space-y-1.5 py-1">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] font-bold text-muted-foreground w-4 shrink-0 text-right">{rank}</span>
+          <span className="text-xs font-medium text-foreground truncate">{label}</span>
+        </div>
+        <span className="text-xs font-bold tabular-nums text-foreground shrink-0">{value}</span>
+      </div>
+      <div className="h-1 bg-muted rounded-full overflow-hidden ml-6">
+        <div
+          className={cn('h-full rounded-full transition-all duration-500', barColor)}
+          style={{
+            width: `${Math.min(100, pct)}%`,
+            ...(barColorRaw ? { backgroundColor: barColorRaw } : {})
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ModeSwitcher({ mode, onChange }: { mode: 'absolute' | 'percent'; onChange: (m: 'absolute' | 'percent') => void }) {
+  return (
+    <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg">
+      <button
+        onClick={() => onChange('absolute')}
+        className={cn('px-2 py-0.5 text-[10px] font-bold rounded-md transition-all', mode === 'absolute' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+      >#</button>
+      <button
+        onClick={() => onChange('percent')}
+        className={cn('px-2 py-0.5 text-[10px] font-bold rounded-md transition-all', mode === 'percent' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+      >%</button>
+    </div>
+  );
+}
+
+// ─── Utilities ─────────────────────────────────────────────────────────────────
+
+function formatCompact(n: number | string): string {
+  const num = typeof n === 'string' ? parseFloat(n) : n;
+  if (isNaN(num)) return String(n);
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toLocaleString();
+}
+
+function truncate(str: string, len: number): string {
+  return str.length > len ? str.slice(0, len) + '…' : str;
 }
