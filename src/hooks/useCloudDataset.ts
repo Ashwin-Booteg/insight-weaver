@@ -150,16 +150,59 @@ export function useCloudDataset(userId: string | null) {
     }
     const mergedColumns = Array.from(columnMap.values());
 
-    // Merge all rows, tagging each with source file
-    const mergedData = datasets.flatMap(ds =>
-      ds.data.map(row => ({
-        ...row,
-        _source_file: ds.fileName
-      }))
-    );
+    // Determine the unified geography type for the merged view:
+    // If all datasets share the same geography, keep it.
+    // If any mix exists (e.g., US + WORLD, or US + EU), upgrade to WORLD.
+    const geoTypes = [...new Set(datasets.map(ds => ds.geographyType || 'WORLD'))];
+    const allSame = geoTypes.length === 1;
+    let unifiedGeoType = allSame ? geoTypes[0] : 'WORLD';
+
+    // If some datasets are US and others are not, force WORLD
+    const hasUS = geoTypes.includes('US');
+    const hasNonUS = geoTypes.some(g => g !== 'US');
+    if (hasUS && hasNonUS) unifiedGeoType = 'WORLD';
+
+    const unifiedProfile = GEOGRAPHY_PROFILES[unifiedGeoType] || GEOGRAPHY_PROFILES.WORLD;
+
+    // Merge all rows, tagging each with source file and a unified _geo_code
+    // _geo_code = normalized location code in the context of the unified profile
+    const mergedData = datasets.flatMap(ds => {
+      const dsGeo = ds.geographyType || 'WORLD';
+      const dsProfile = GEOGRAPHY_PROFILES[dsGeo] || GEOGRAPHY_PROFILES.WORLD;
+
+      return ds.data.map(row => {
+        const originalState = (row['_state_normalized'] as string) || null;
+        let geoCode: string | null = originalState;
+
+        if (originalState && unifiedGeoType === 'WORLD' && dsGeo !== 'WORLD') {
+          // This row has a sub-national code (e.g. US state 'CA', 'TX')
+          // Check if that code exists directly in the world profile (e.g. 'CA' = Canada)
+          if (unifiedProfile.locationMap[originalState]) {
+            // Lucky overlap — use as-is (e.g. Canada province 'ON' might not exist in WORLD)
+            geoCode = originalState;
+          } else {
+            // Map to the country code that this dataset represents
+            // US states → 'US', Indian states → 'IN', etc.
+            const countryCode = dsGeo === 'US' ? 'US'
+              : dsGeo === 'IN' ? 'IN'
+              : dsGeo === 'GB' ? 'GB'
+              : dsGeo === 'CA' ? 'CA'
+              : originalState;
+            geoCode = unifiedProfile.locationMap[countryCode] ? countryCode : originalState;
+          }
+        }
+
+        return {
+          ...row,
+          _source_file: ds.fileName,
+          _source_geo: dsGeo,
+          _state_original: originalState, // preserve original state for drill-down
+          _state_normalized: geoCode     // override with unified geo code for world map
+        };
+      });
+    });
 
     const totalRows = mergedData.length;
-    const geographyType = datasets[0].geographyType || 'WORLD';
 
     return {
       id: '__merged__',
@@ -168,7 +211,7 @@ export function useCloudDataset(userId: string | null) {
       rowCount: totalRows,
       columns: mergedColumns,
       data: mergedData,
-      geographyType
+      geographyType: unifiedGeoType
     };
   }, [datasets]);
 
