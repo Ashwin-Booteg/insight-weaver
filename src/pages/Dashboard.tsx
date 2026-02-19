@@ -44,6 +44,7 @@ const Dashboard = () => {
   const {
     activeDataset, activeDatasetId, setActiveDatasetId,
     uploadFile, deleteDataset, uploadHistory,
+    mergeAll, setMergeAll, mergeSummary,
     icpConfig, setICPConfig, isLoading, isSyncing, error, refreshFromCloud
   } = useCloudDataset(user?.id || null);
   
@@ -188,7 +189,10 @@ const Dashboard = () => {
               <div className="flex items-center gap-2">
                 {hasData ? (
                   <p className="text-xs text-muted-foreground">
-                    {activeDataset.fileName} • {filteredData.length.toLocaleString()} records • {profile.displayName}
+                    {mergeAll && mergeSummary
+                      ? mergeSummary.label
+                      : `${activeDataset.fileName} • ${filteredData.length.toLocaleString()} records`
+                    } • {profile.displayName}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">No dataset loaded</p>
@@ -214,12 +218,20 @@ const Dashboard = () => {
                 <DialogHeader>
                   <DialogTitle>Upload Dataset</DialogTitle>
                 </DialogHeader>
-                <FileUpload onUpload={async (file) => { 
-                  await uploadFile(file); 
-                  setUploadDialogOpen(false); 
+                <FileUpload onUpload={async (file) => {
+                  await uploadFile(file);
+                  setUploadDialogOpen(false);
                 }} isLoading={isLoading} />
                 {error && <div className="mt-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
-                <UploadHistoryList history={uploadHistory} activeId={activeDatasetId} onSelect={(id) => { setActiveDatasetId(id); setUploadDialogOpen(false); }} onDelete={deleteDataset} />
+                <UploadHistoryList
+                  history={uploadHistory}
+                  activeId={activeDatasetId}
+                  onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); setUploadDialogOpen(false); }}
+                  onDelete={deleteDataset}
+                  mergeAll={mergeAll}
+                  onMergeAllChange={setMergeAll}
+                  mergeSummary={mergeSummary}
+                />
               </DialogContent>
             </Dialog>
             
@@ -246,7 +258,15 @@ const Dashboard = () => {
             </Button>
             {uploadHistory.length > 0 && (
               <div className="mt-6">
-                <UploadHistoryList history={uploadHistory} activeId={activeDatasetId} onSelect={setActiveDatasetId} onDelete={deleteDataset} />
+                <UploadHistoryList
+                  history={uploadHistory}
+                  activeId={activeDatasetId}
+                  onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); }}
+                  onDelete={deleteDataset}
+                  mergeAll={mergeAll}
+                  onMergeAllChange={setMergeAll}
+                  mergeSummary={mergeSummary}
+                />
               </div>
             )}
           </div>

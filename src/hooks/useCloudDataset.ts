@@ -5,9 +5,34 @@ import { GEOGRAPHY_PROFILES } from '@/types/geography';
 import { parseExcelFile, getUniqueValues, getNumericRange, categorizeIndustry, normalizeStateValue } from '@/utils/dataParser';
 import { toast } from 'sonner';
 
+// Fetch ALL rows for a dataset using pagination (no 1000-row limit)
+async function fetchAllRows(datasetId: string): Promise<Array<{ row_data: unknown; state_normalized: string | null; industry_category: string | null }>> {
+  const pageSize = 1000;
+  let from = 0;
+  const allRows: Array<{ row_data: unknown; state_normalized: string | null; industry_category: string | null }> = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('dataset_rows')
+      .select('row_data, state_normalized, industry_category')
+      .eq('dataset_id', datasetId)
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    allRows.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
 export function useCloudDataset(userId: string | null) {
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [activeDatasetId, setActiveDatasetId] = useState<string | null>(null);
+  const [mergeAll, setMergeAll] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     states: [],
     dateRange: { start: null, end: null },
@@ -32,10 +57,9 @@ export function useCloudDataset(userId: string | null) {
 
   const fetchCloudDatasets = async () => {
     if (!userId) return;
-    
+
     setIsSyncing(true);
     try {
-      // Fetch datasets
       const { data: cloudDatasets, error: fetchError } = await supabase
         .from('datasets')
         .select('*')
@@ -44,14 +68,10 @@ export function useCloudDataset(userId: string | null) {
       if (fetchError) throw fetchError;
 
       if (cloudDatasets && cloudDatasets.length > 0) {
-        // Fetch rows for each dataset
         const datasetsWithRows: DatasetInfo[] = await Promise.all(
           cloudDatasets.map(async (ds) => {
-            const { data: rows } = await supabase
-              .from('dataset_rows')
-              .select('row_data, state_normalized, industry_category')
-              .eq('dataset_id', ds.id)
-              .limit(1000); // Limit for performance
+            // Use paginated fetch — no row limit
+            const rows = await fetchAllRows(ds.id);
 
             const rawCols = ds.columns as any;
             const cols = Array.isArray(rawCols) ? rawCols : rawCols?.columns || [];
@@ -63,7 +83,7 @@ export function useCloudDataset(userId: string | null) {
               uploadedAt: new Date(ds.created_at),
               rowCount: ds.row_count,
               columns: cols,
-              data: (rows || []).map(r => ({
+              data: rows.map(r => ({
                 ...r.row_data as Record<string, unknown>,
                 _state_normalized: r.state_normalized,
                 _industry_category: r.industry_category
@@ -85,16 +105,55 @@ export function useCloudDataset(userId: string | null) {
     }
   };
 
+  // Merged dataset: combine all datasets into one virtual dataset
+  const mergedDataset = useMemo((): DatasetInfo | null => {
+    if (datasets.length === 0) return null;
+    if (datasets.length === 1) return datasets[0];
+
+    // Find a common set of columns across all datasets (by name)
+    const allColumnSets = datasets.map(d => new Set((d.columns as any[]).map((c: any) => c.name)));
+    const commonColumnNames = [...allColumnSets[0]].filter(name =>
+      allColumnSets.every(set => set.has(name))
+    );
+
+    // Use columns from first dataset that exist in all
+    const mergedColumns = (datasets[0].columns as any[]).filter((c: any) =>
+      commonColumnNames.includes(c.name)
+    );
+
+    // Merge all rows, tagging each with source file
+    const mergedData = datasets.flatMap(ds =>
+      ds.data.map(row => ({
+        ...row,
+        _source_file: ds.fileName
+      }))
+    );
+
+    const totalRows = mergedData.length;
+    const geographyType = datasets[0].geographyType || 'WORLD';
+
+    return {
+      id: '__merged__',
+      fileName: `${datasets.length} files merged`,
+      uploadedAt: new Date(),
+      rowCount: totalRows,
+      columns: mergedColumns,
+      data: mergedData,
+      geographyType
+    };
+  }, [datasets]);
+
   const activeDataset = useMemo(() => {
+    if (mergeAll) return mergedDataset;
+
     const ds = datasets.find(d => d.id === activeDatasetId) || null;
     if (ds && !Array.isArray(ds.columns)) {
-      // Safety: columns might be stored as { columns: [...], geographyType } object
       const raw = ds.columns as any;
       ds.columns = raw?.columns || [];
       if (raw?.geographyType) ds.geographyType = raw.geographyType;
     }
     return ds;
-  }, [datasets, activeDatasetId]);
+  }, [datasets, activeDatasetId, mergeAll, mergedDataset]);
 
   const uploadHistory: UploadHistory[] = useMemo(() => {
     return datasets.map(d => ({
@@ -115,10 +174,8 @@ export function useCloudDataset(userId: string | null) {
     setError(null);
 
     try {
-      // Parse Excel file locally first
       const datasetInfo = await parseExcelFile(file);
 
-      // Slim down columns metadata to reduce payload size (remove sample values)
       const slimColumns = datasetInfo.columns.map(col => ({
         name: col.name,
         type: col.type,
@@ -133,7 +190,6 @@ export function useCloudDataset(userId: string | null) {
         isDomain: col.isDomain
       }));
 
-      // Insert dataset record (store geographyType alongside columns)
       const columnsPayload = { columns: slimColumns, geographyType: datasetInfo.geographyType || 'WORLD' };
       const { data: insertedDataset, error: insertError } = await supabase
         .from('datasets')
@@ -151,11 +207,9 @@ export function useCloudDataset(userId: string | null) {
         throw insertError;
       }
 
-      // Prepare rows for insertion
       const stateColumn = datasetInfo.columns.find(c => c.isState);
       const industryColumn = datasetInfo.columns.find(c => c.isIndustry);
 
-      // Use detected geography profile for normalization
       const detectedProfile = datasetInfo.geographyType && GEOGRAPHY_PROFILES[datasetInfo.geographyType]
         ? GEOGRAPHY_PROFILES[datasetInfo.geographyType]
         : GEOGRAPHY_PROFILES.WORLD;
@@ -174,11 +228,9 @@ export function useCloudDataset(userId: string | null) {
         const { error: rowsError } = await supabase
           .from('dataset_rows')
           .insert(batch as any);
-
         if (rowsError) throw rowsError;
       }
 
-      // Update local state
       const newDataset: DatasetInfo = {
         id: insertedDataset.id,
         fileName: file.name,
@@ -192,13 +244,11 @@ export function useCloudDataset(userId: string | null) {
       setDatasets(prev => [newDataset, ...prev]);
       setActiveDatasetId(newDataset.id);
 
-      // Auto-detect ICP column
       const icpColumn = datasetInfo.columns.find(c => c.isICP);
       if (icpColumn) {
         setICPConfig({ mode: 'column', columnName: icpColumn.name });
       }
 
-      // Reset filters
       setFilters({
         states: [],
         dateRange: { start: null, end: null },
@@ -232,7 +282,7 @@ export function useCloudDataset(userId: string | null) {
       if (error) throw error;
 
       setDatasets(prev => prev.filter(d => d.id !== id));
-      
+
       if (activeDatasetId === id) {
         const remaining = datasets.filter(d => d.id !== id);
         setActiveDatasetId(remaining.length > 0 ? remaining[0].id : null);
@@ -251,7 +301,6 @@ export function useCloudDataset(userId: string | null) {
     const stateColumn = activeDataset.columns.find(c => c.isState);
     const industryColumn = activeDataset.columns.find(c => c.isIndustry);
 
-    // Filter by states
     if (filters.states.length > 0 && stateColumn) {
       data = data.filter(row => {
         const normalizedState = row[`${stateColumn.name}_normalized`] || row['_state_normalized'];
@@ -259,43 +308,40 @@ export function useCloudDataset(userId: string | null) {
       });
     }
 
-    // Filter by industries
     if (filters.industries.length > 0 && industryColumn) {
       data = data.filter(row => {
         const normalizedCategory = row[`${industryColumn.name}_category`] || row['_industry_category'];
         if (normalizedCategory && filters.industries.includes(normalizedCategory as string)) {
           return true;
         }
-
         const industryValue = String(row[industryColumn.name] || '').toLowerCase();
         return filters.industries.some(selectedIndustry => {
           const category = selectedIndustry.toLowerCase();
           if (category.includes('movie') || category.includes('entertainment')) {
-            return industryValue.includes('movie') || industryValue.includes('film') || 
-                   industryValue.includes('entertainment') || industryValue.includes('cinema');
+            return industryValue.includes('movie') || industryValue.includes('film') ||
+              industryValue.includes('entertainment') || industryValue.includes('cinema');
           }
           if (category.includes('music') || category.includes('audio')) {
-            return industryValue.includes('music') || industryValue.includes('audio') || 
-                   industryValue.includes('sound') || industryValue.includes('recording');
+            return industryValue.includes('music') || industryValue.includes('audio') ||
+              industryValue.includes('sound') || industryValue.includes('recording');
           }
           if (category.includes('fashion') || category.includes('apparel')) {
-            return industryValue.includes('fashion') || industryValue.includes('apparel') || 
-                   industryValue.includes('clothing') || industryValue.includes('textile');
+            return industryValue.includes('fashion') || industryValue.includes('apparel') ||
+              industryValue.includes('clothing') || industryValue.includes('textile');
           }
           return industryValue.includes(category);
         });
       });
     }
 
-    // Filter by search text
     if (filters.searchText) {
       const searchLower = filters.searchText.toLowerCase();
-      data = data.filter(row => {
-        return Object.values(row).some(value => {
+      data = data.filter(row =>
+        Object.values(row).some(value => {
           if (value === null || value === undefined) return false;
           return String(value).toLowerCase().includes(searchLower);
-        });
-      });
+        })
+      );
     }
 
     return data;
@@ -329,19 +375,14 @@ export function useCloudDataset(userId: string | null) {
         const state = row[`${stateColumn.name}_normalized`] || row['_state_normalized'];
         if (state) uniqueStates.add(state as string);
       }
-
       for (const col of numericColumns) {
         const value = row[col.name];
-        if (typeof value === 'number' && !isNaN(value)) {
-          totalNumericSum += value;
-        }
+        if (typeof value === 'number' && !isNaN(value)) totalNumericSum += value;
       }
-
       if (industryColumn) {
         const industry = row['_industry_category'] || row[`${industryColumn.name}_category`] || String(row[industryColumn.name] || 'Unknown');
         industryBreakdown[industry as string] = (industryBreakdown[industry as string] || 0) + 1;
       }
-
       if (levelColumn) {
         const level = String(row[levelColumn.name] || 'Unknown');
         levelBreakdown[level] = (levelBreakdown[level] || 0) + 1;
@@ -360,7 +401,6 @@ export function useCloudDataset(userId: string | null) {
 
   const stateMetrics: StateMetric[] = useMemo(() => {
     if (!activeDataset) return [];
-
     const stateColumn = activeDataset.columns.find(c => c.isState);
     if (!stateColumn) return [];
 
@@ -370,20 +410,14 @@ export function useCloudDataset(userId: string | null) {
     for (const row of filteredData) {
       const stateCode = (row[`${stateColumn.name}_normalized`] || row['_state_normalized']) as string;
       if (!stateCode) continue;
-
-      if (!stateData[stateCode]) {
-        stateData[stateCode] = { count: 0, icpCount: 0, companies: new Set() };
-      }
-
+      if (!stateData[stateCode]) stateData[stateCode] = { count: 0, icpCount: 0, companies: new Set() };
       stateData[stateCode].count++;
-
       if (icpConfig.mode === 'column' && icpConfig.columnName) {
         const value = row[icpConfig.columnName];
         if (value === true || value === 'true' || value === 'yes' || value === 'Yes' || value === 1 || value === '1') {
           stateData[stateCode].icpCount++;
         }
       }
-
       if (companyColumn) {
         const company = row[companyColumn.name];
         if (company) stateData[stateCode].companies.add(String(company));
@@ -391,8 +425,6 @@ export function useCloudDataset(userId: string | null) {
     }
 
     const total = filteredData.length;
-
-    // Use active dataset's geography profile for location names
     const geoType = activeDataset?.geographyType;
     const geoProfile = geoType && GEOGRAPHY_PROFILES[geoType] ? GEOGRAPHY_PROFILES[geoType] : GEOGRAPHY_PROFILES.WORLD;
 
@@ -418,33 +450,37 @@ export function useCloudDataset(userId: string | null) {
 
     const categories: Record<string, string[]> = {};
     const numericRanges: Record<string, { min: number; max: number }> = {};
-
-    const industryColumn = activeDataset.columns.find(c => c.isIndustry);
-    const industries = industryColumn
-      ? [...INDUSTRY_CATEGORIES]
-      : [...INDUSTRY_CATEGORIES];
+    const industries = [...INDUSTRY_CATEGORIES];
 
     for (const col of activeDataset.columns) {
       if (col.type === 'text' && !col.isState && !col.isCity && !col.isZip && !col.isIndustry && !col.isLevel && !col.isDomain) {
         const uniqueValues = getUniqueValues(activeDataset.data, col.name) as string[];
-        if (uniqueValues.length > 0 && uniqueValues.length <= 50) {
-          categories[col.name] = uniqueValues;
-        }
+        if (uniqueValues.length > 0 && uniqueValues.length <= 50) categories[col.name] = uniqueValues;
       }
-
-      if (col.type === 'number') {
-        numericRanges[col.name] = getNumericRange(activeDataset.data, col.name);
-      }
+      if (col.type === 'number') numericRanges[col.name] = getNumericRange(activeDataset.data, col.name);
     }
 
     return { states, categories, numericRanges, industries, levels: [], domains: [] };
   }, [activeDataset]);
+
+  // Merge summary for UI display
+  const mergeSummary = useMemo(() => {
+    if (!mergeAll || !mergedDataset) return null;
+    return {
+      fileCount: datasets.length,
+      totalRows: mergedDataset.rowCount,
+      label: `${datasets.length} files merged · ${mergedDataset.rowCount.toLocaleString()} rows total`
+    };
+  }, [mergeAll, mergedDataset, datasets]);
 
   return {
     datasets,
     activeDataset,
     activeDatasetId,
     setActiveDatasetId,
+    mergeAll,
+    setMergeAll,
+    mergeSummary,
     uploadFile,
     deleteDataset,
     uploadHistory,
