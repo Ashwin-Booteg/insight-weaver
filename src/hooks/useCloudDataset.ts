@@ -94,8 +94,12 @@ export function useCloudDataset(userId: string | null) {
         );
 
         setDatasets(datasetsWithRows);
-        if (!activeDatasetId && datasetsWithRows.length > 0) {
+        if (datasetsWithRows.length > 0) {
           setActiveDatasetId(datasetsWithRows[0].id);
+          // Auto-merge all datasets so the full appended view is always active
+          if (datasetsWithRows.length > 1) {
+            setMergeAll(true);
+          }
         }
       }
     } catch (err) {
@@ -241,7 +245,12 @@ export function useCloudDataset(userId: string | null) {
         geographyType: datasetInfo.geographyType
       };
 
-      setDatasets(prev => [newDataset, ...prev]);
+      setDatasets(prev => {
+        const updated = [newDataset, ...prev];
+        // Auto-enable merge if more than one dataset is present
+        if (updated.length > 1) setMergeAll(true);
+        return updated;
+      });
       setActiveDatasetId(newDataset.id);
 
       const icpColumn = datasetInfo.columns.find(c => c.isICP);
@@ -260,7 +269,7 @@ export function useCloudDataset(userId: string | null) {
         domains: []
       });
 
-      toast.success(`Uploaded ${datasetInfo.rowCount.toLocaleString()} records to cloud`);
+      toast.success(`Appended ${datasetInfo.rowCount.toLocaleString()} records — all data merged`);
       return newDataset;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to upload file';

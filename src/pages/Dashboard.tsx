@@ -211,15 +211,16 @@ const Dashboard = () => {
             <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" /> {hasData ? 'New File' : 'Upload Data'}
+                  <Plus className="w-4 h-4" /> Append Data
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Upload Dataset</DialogTitle>
+                  <DialogTitle>Append Data</DialogTitle>
                 </DialogHeader>
                 <FileUpload onUpload={async (file) => {
                   await uploadFile(file);
+                  setMergeAll(true);
                   setUploadDialogOpen(false);
                 }} isLoading={isLoading} />
                 {error && <div className="mt-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
@@ -254,7 +255,7 @@ const Dashboard = () => {
               Upload your first dataset to start analyzing global workforce data, targeting ideal profiles, and exploring geographic distributions.
             </p>
             <Button size="lg" onClick={() => setUploadDialogOpen(true)} className="gap-2 rounded-xl px-8">
-              <Upload className="w-5 h-5" /> Upload Your First Dataset
+              <Upload className="w-5 h-5" /> Append Your First Dataset
             </Button>
             {uploadHistory.length > 0 && (
               <div className="mt-6">
