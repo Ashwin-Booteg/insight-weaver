@@ -331,18 +331,23 @@ export function useCloudDataset(userId: string | null) {
 
       if (error) throw error;
 
-      setDatasets(prev => prev.filter(d => d.id !== id));
-
-      if (activeDatasetId === id) {
-        const remaining = datasets.filter(d => d.id !== id);
-        setActiveDatasetId(remaining.length > 0 ? remaining[0].id : null);
-      }
+      setDatasets(prev => {
+        const remaining = prev.filter(d => d.id !== id);
+        // If we deleted the active dataset, switch to first remaining or null
+        setActiveDatasetId(curr => {
+          if (curr === id) return remaining.length > 0 ? remaining[0].id : null;
+          return curr;
+        });
+        // If only one dataset left, turn off merge
+        if (remaining.length <= 1) setMergeAll(remaining.length === 1);
+        return remaining;
+      });
 
       toast.success('Dataset deleted');
     } catch (err) {
       toast.error('Failed to delete dataset');
     }
-  }, [activeDatasetId, datasets]);
+  }, []);
 
   const filteredData = useMemo(() => {
     if (!activeDataset) return [];
