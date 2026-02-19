@@ -320,15 +320,15 @@ const Dashboard = () => {
               
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
                 <div className="flex items-center justify-between gap-4 mb-5">
-                  <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-xl">
-                    <TabsTrigger value="overview" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-primary/25"><LayoutGrid className="w-3.5 h-3.5" /> Overview</TabsTrigger>
-                    <TabsTrigger value="charts" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-primary/25"><PieChart className="w-3.5 h-3.5" /> Charts</TabsTrigger>
+                  <TabsList className="bg-card border border-border p-1 rounded-xl h-9 gap-0.5">
+                    <TabsTrigger value="overview" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"><LayoutGrid className="w-3.5 h-3.5" /> Overview</TabsTrigger>
+                    <TabsTrigger value="charts" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"><PieChart className="w-3.5 h-3.5" /> Charts</TabsTrigger>
                     {profile.mapType !== 'none' && (
-                      <TabsTrigger value="map" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-primary/25"><Map className="w-3.5 h-3.5" /> Map</TabsTrigger>
+                      <TabsTrigger value="map" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"><Map className="w-3.5 h-3.5" /> Map</TabsTrigger>
                     )}
-                    <TabsTrigger value="tables" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-primary/25"><Table className="w-3.5 h-3.5" /> Tables</TabsTrigger>
-                    <TabsTrigger value="ai-insights" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-primary/25"><Brain className="w-3.5 h-3.5" /> AI</TabsTrigger>
-                  </div>
+                    <TabsTrigger value="tables" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"><Table className="w-3.5 h-3.5" /> Tables</TabsTrigger>
+                    <TabsTrigger value="ai-insights" className="gap-1.5 rounded-lg text-xs h-7 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"><Brain className="w-3.5 h-3.5" /> AI</TabsTrigger>
+                  </TabsList>
                   {activeTab === 'map' && <MetricSelector value={mapMetricType} onChange={setMapMetricType} />}
                 </div>
                 
