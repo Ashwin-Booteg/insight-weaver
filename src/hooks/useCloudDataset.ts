@@ -175,21 +175,18 @@ export function useCloudDataset(userId: string | null) {
         let geoCode: string | null = originalState;
 
         if (originalState && unifiedGeoType === 'WORLD' && dsGeo !== 'WORLD') {
-          // This row has a sub-national code (e.g. US state 'CA', 'TX')
-          // Check if that code exists directly in the world profile (e.g. 'CA' = Canada)
-          if (unifiedProfile.locationMap[originalState]) {
-            // Lucky overlap — use as-is (e.g. Canada province 'ON' might not exist in WORLD)
-            geoCode = originalState;
-          } else {
-            // Map to the country code that this dataset represents
-            // US states → 'US', Indian states → 'IN', etc.
-            const countryCode = dsGeo === 'US' ? 'US'
-              : dsGeo === 'IN' ? 'IN'
-              : dsGeo === 'GB' ? 'GB'
-              : dsGeo === 'CA' ? 'CA'
-              : originalState;
-            geoCode = unifiedProfile.locationMap[countryCode] ? countryCode : originalState;
+          // This row has a sub-national code (e.g. US state 'CA', 'TX', Indian state 'MH').
+          // Always map sub-national codes to their parent country code — do NOT rely on
+          // accidental code overlaps (e.g. 'CA' is both California and Canada in different profiles).
+          // Map dsGeo (e.g. 'US', 'IN', 'GB', 'CA_country') to the world ISO-2 country code.
+          const SUB_NATIONAL_TO_COUNTRY: Record<string, string> = {
+            US: 'US', IN: 'IN', GB: 'GB', CA: 'CA'
+          };
+          const countryCode = SUB_NATIONAL_TO_COUNTRY[dsGeo] || null;
+          if (countryCode && unifiedProfile.locationMap[countryCode]) {
+            geoCode = countryCode;
           }
+          // If we can't determine the country, leave geoCode as-is (best effort)
         }
 
         return {
