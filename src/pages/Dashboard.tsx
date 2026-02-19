@@ -18,7 +18,7 @@ import {
   RoleRegionStackedChart, RegionIndustryHeatmap
 } from '@/components/charts/AdvancedCharts';
 import { SunburstChart } from '@/components/charts/SunburstChart';
-import { BarChart3, Map, Table, Upload, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw, LayoutGrid, Database, Plus } from 'lucide-react';
+import { BarChart3, Map, Table, Upload, LogOut, Loader2, PieChart, TrendingUp, Brain, Cloud, RefreshCw, LayoutGrid, Database, Plus, Settings2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, Session } from '@supabase/supabase-js';
@@ -175,101 +175,107 @@ const Dashboard = () => {
   
   return (
     <div className="dashboard-layout flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-3 shrink-0 sticky top-0 z-20">
+      {/* ── Header ── */}
+      <header className="glass border-b border-border px-5 py-3 shrink-0 sticky top-0 z-20">
         <div className="flex items-center justify-between gap-4">
+          {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-chart-purple rounded-xl flex items-center justify-center shadow-lg">
-              <BarChart3 className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+              </svg>
             </div>
             <div>
-              <h1 className="text-lg font-black text-foreground">
-                <span className="text-primary">Starzopp</span> Global ICP Bank
-              </h1>
-              <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold tracking-tight text-foreground">Starzopp <span className="text-muted-foreground font-normal">ICP Bank</span></h1>
+              <div className="flex items-center gap-2 mt-0.5">
                 {hasData ? (
-                  <p className="text-xs text-muted-foreground">
-                    {mergeAll && mergeSummary
-                      ? mergeSummary.label
-                      : `${activeDataset.fileName} • ${filteredData.length.toLocaleString()} records`
-                    } • {profile.displayName}
-                  </p>
+                  <span className="text-[11px] text-muted-foreground">
+                    {mergeAll && mergeSummary ? mergeSummary.label : `${activeDataset.fileName} · ${filteredData.length.toLocaleString()} rows`}
+                    {' · '}<span className="text-primary/80">{profile.displayName}</span>
+                  </span>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No dataset loaded</p>
+                  <span className="text-[11px] text-muted-foreground">No data loaded</span>
                 )}
-                {isSyncing ? (
-                  <Badge variant="outline" className="gap-1 text-xs"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing</Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-1 text-xs text-chart-teal border-chart-teal/30"><Cloud className="w-3 h-3" /> Cloud</Badge>
-                )}
+                {isSyncing && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
               </div>
             </div>
           </div>
+
+          {/* Actions */}
           <div className="flex items-center gap-2">
             {hasData && <ICPConfigDialog config={icpConfig} onConfigChange={setICPConfig} columns={activeDataset.columns} />}
-            
+
+            {/* Append Data Dialog — clean, no history */}
             <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" /> Append Data
+                <Button size="sm" className="h-8 gap-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium shadow-lg shadow-primary/20">
+                  <Plus className="w-3.5 h-3.5" /> Append Data
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Append Data</DialogTitle>
-                </DialogHeader>
-                <FileUpload onUpload={async (file) => {
-                  await uploadFile(file);
-                  setMergeAll(true);
-                  setUploadDialogOpen(false);
-                }} isLoading={isLoading} />
-                {error && <div className="mt-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
-                <UploadHistoryList
-                  history={uploadHistory}
-                  activeId={activeDatasetId}
-                  onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); setUploadDialogOpen(false); }}
-                  onDelete={deleteDataset}
-                  mergeAll={mergeAll}
-                  onMergeAllChange={setMergeAll}
-                  mergeSummary={mergeSummary}
-                />
+              <DialogContent className="sm:max-w-md border border-border bg-card rounded-2xl p-0 overflow-hidden">
+                <div className="p-6 border-b border-border">
+                  <DialogTitle className="text-base font-semibold">Append Data</DialogTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Upload an Excel file to add it to your data bank. Same filenames are replaced automatically.</p>
+                </div>
+                <div className="p-6">
+                  <FileUpload onUpload={async (file) => {
+                    await uploadFile(file);
+                    setMergeAll(true);
+                    setUploadDialogOpen(false);
+                  }} isLoading={isLoading} />
+                  {error && <p className="mt-3 text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>}
+                </div>
               </DialogContent>
             </Dialog>
-            
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
-              <LogOut className="w-4 h-4 mr-2" /> Logout
+
+            {/* Manage datasets */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground">
+                  <Settings2 className="w-3.5 h-3.5" />
+                  {uploadHistory.length > 0 && <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded-full">{uploadHistory.length}</span>}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md border border-border bg-card rounded-2xl p-0 overflow-hidden">
+                <div className="p-6 border-b border-border">
+                  <DialogTitle className="text-base font-semibold">Manage Datasets</DialogTitle>
+                  <p className="text-xs text-muted-foreground mt-1">{uploadHistory.length} file{uploadHistory.length !== 1 ? 's' : ''} in your data bank</p>
+                </div>
+                <div className="p-4">
+                  <UploadHistoryList
+                    history={uploadHistory}
+                    activeId={activeDatasetId}
+                    onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); }}
+                    onDelete={deleteDataset}
+                    mergeAll={mergeAll}
+                    onMergeAllChange={setMergeAll}
+                    mergeSummary={mergeSummary}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="h-8 rounded-lg text-xs text-muted-foreground hover:text-destructive">
+              <LogOut className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
       </header>
 
       {!hasData ? (
-        /* Empty state — no dataset yet */
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="text-center max-w-md animate-fade-in">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-chart-purple/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <Database className="w-12 h-12 text-primary" />
+        <div className="flex-1 flex items-center justify-center p-8 dot-grid">
+          <div className="text-center max-w-sm animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
+              <Database className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to your Dashboard</h2>
-            <p className="text-muted-foreground mb-6">
-              Upload your first dataset to start analyzing global workforce data, targeting ideal profiles, and exploring geographic distributions.
+            <h2 className="text-xl font-bold text-foreground mb-2">Start with your data</h2>
+            <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+              Upload an Excel file to begin analyzing workforce data, ICP profiles, and geographic distribution.
             </p>
-            <Button size="lg" onClick={() => setUploadDialogOpen(true)} className="gap-2 rounded-xl px-8">
-              <Upload className="w-5 h-5" /> Append Your First Dataset
+            <Button onClick={() => setUploadDialogOpen(true)} className="gap-2 rounded-xl px-6 h-10 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 text-sm font-medium">
+              <Upload className="w-4 h-4" /> Append Your First Dataset
             </Button>
-            {uploadHistory.length > 0 && (
-              <div className="mt-6">
-                <UploadHistoryList
-                  history={uploadHistory}
-                  activeId={activeDatasetId}
-                  onSelect={(id) => { setActiveDatasetId(id); setMergeAll(false); }}
-                  onDelete={deleteDataset}
-                  mergeAll={mergeAll}
-                  onMergeAllChange={setMergeAll}
-                  mergeSummary={mergeSummary}
-                />
-              </div>
-            )}
           </div>
         </div>
       ) : (
@@ -296,14 +302,14 @@ const Dashboard = () => {
               
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
                 <div className="flex items-center justify-between gap-4 mb-4">
-                  <TabsList className="bg-muted/50 p-1 rounded-xl">
-                    <TabsTrigger value="overview" className="gap-2 rounded-lg"><LayoutGrid className="w-4 h-4" /> Overview</TabsTrigger>
-                    <TabsTrigger value="charts" className="gap-2 rounded-lg"><PieChart className="w-4 h-4" /> Charts</TabsTrigger>
+                  <TabsList className="bg-card border border-border p-1 rounded-xl h-9">
+                    <TabsTrigger value="overview" className="gap-1.5 rounded-lg text-xs h-7"><LayoutGrid className="w-3.5 h-3.5" /> Overview</TabsTrigger>
+                    <TabsTrigger value="charts" className="gap-1.5 rounded-lg text-xs h-7"><PieChart className="w-3.5 h-3.5" /> Charts</TabsTrigger>
                     {profile.mapType !== 'none' && (
-                      <TabsTrigger value="map" className="gap-2 rounded-lg"><Map className="w-4 h-4" /> Geographic</TabsTrigger>
+                      <TabsTrigger value="map" className="gap-1.5 rounded-lg text-xs h-7"><Map className="w-3.5 h-3.5" /> Map</TabsTrigger>
                     )}
-                    <TabsTrigger value="tables" className="gap-2 rounded-lg"><Table className="w-4 h-4" /> Tables</TabsTrigger>
-                    <TabsTrigger value="ai-insights" className="gap-2 rounded-lg"><Brain className="w-4 h-4" /> AI Insights</TabsTrigger>
+                    <TabsTrigger value="tables" className="gap-1.5 rounded-lg text-xs h-7"><Table className="w-3.5 h-3.5" /> Tables</TabsTrigger>
+                    <TabsTrigger value="ai-insights" className="gap-1.5 rounded-lg text-xs h-7"><Brain className="w-3.5 h-3.5" /> AI</TabsTrigger>
                   </TabsList>
                   {activeTab === 'map' && <MetricSelector value={mapMetricType} onChange={setMapMetricType} />}
                 </div>

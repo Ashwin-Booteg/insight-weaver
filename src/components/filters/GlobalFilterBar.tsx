@@ -46,112 +46,47 @@ export function GlobalFilterBar({
   const regionLabel = profile?.regionLabel || 'Regions';
 
   return (
-    <div className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
-      <div className="p-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2 text-muted-foreground mr-2">
-            <Filter className="w-4 h-4" />
-            <span className="text-sm font-medium">Filters:</span>
-          </div>
+    <div className="glass border-b border-border px-5 py-2.5 sticky top-[57px] z-30">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mr-1">Filter</span>
 
-          {/* Region Filter */}
-          {regionNames.length > 0 && (
-            <RegionFilterPopover
-              selectedRegions={filters.regions}
-              regionNames={regionNames}
-              profile={profile}
-              onChange={onRegionsChange}
-            />
-          )}
-
-          {/* Location Filter */}
-          <LocationFilterPopover
-            selectedStates={filters.states}
-            availableStates={availableStates}
-            onChange={onStatesChange}
-            onSelectAll={onSelectAllStates}
-            profile={profile}
-          />
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          {/* Industry Filter */}
-          <IndustryFilterPopover
-            selectedIndustries={filters.selectedIndustries}
-            rolesByIndustry={rolesByIndustry}
-            industryMode={filters.industryFilterMode}
-            onChange={onIndustriesChange}
-            onModeChange={onIndustryModeChange}
-          />
-
-          {/* Role Filter */}
-          <RoleFilterPopover
-            selectedRoles={filters.selectedRoles}
-            roleMetadata={roleMetadata}
-            top20Roles={top20Roles}
-            onChange={onRolesChange}
-            onSelectTop20={onSelectTop20Roles}
-          />
-
-          {hasActiveFilters && (
-            <>
-              <Separator orientation="vertical" className="h-6 mx-1" />
-              <Button variant="ghost" size="sm" onClick={onClearAll}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8">
-                <X className="w-4 h-4 mr-1" /> Clear All
-              </Button>
-            </>
-          )}
-        </div>
+        {regionNames.length > 0 && (
+          <RegionFilterPopover selectedRegions={filters.regions} regionNames={regionNames} profile={profile} onChange={onRegionsChange} />
+        )}
+        <LocationFilterPopover selectedStates={filters.states} availableStates={availableStates} onChange={onStatesChange} onSelectAll={onSelectAllStates} profile={profile} />
+        <div className="w-px h-4 bg-border mx-0.5" />
+        <IndustryFilterPopover selectedIndustries={filters.selectedIndustries} rolesByIndustry={rolesByIndustry} industryMode={filters.industryFilterMode} onChange={onIndustriesChange} onModeChange={onIndustryModeChange} />
+        <RoleFilterPopover selectedRoles={filters.selectedRoles} roleMetadata={roleMetadata} top20Roles={top20Roles} onChange={onRolesChange} onSelectTop20={onSelectTop20Roles} />
 
         {hasActiveFilters && (
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
-            <span className="text-xs text-muted-foreground">Active:</span>
-            
-            {filters.regions.map(region => (
-              <Badge key={region} variant="secondary" className="gap-1 text-xs">
-                <Globe2 className="w-3 h-3" />
-                {region}
-                <button onClick={() => onRegionsChange(filters.regions.filter(r => r !== region))}
-                  className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
+          <>
+            <div className="w-px h-4 bg-border mx-0.5" />
+            {filters.regions.map(r => (
+              <Badge key={r} variant="secondary" className="gap-1 text-[11px] h-6 rounded-lg">
+                <Globe2 className="w-2.5 h-2.5" />{r}
+                <button onClick={() => onRegionsChange(filters.regions.filter(x => x !== r))} className="ml-0.5 hover:text-destructive"><X className="w-2.5 h-2.5" /></button>
               </Badge>
             ))}
-
-            {filters.states.length > 0 && filters.states.length <= 3 && filters.states.map(state => (
-              <Badge key={state} variant="secondary" className="gap-1 text-xs">
-                <MapPin className="w-3 h-3" />
-                {profile ? getLocationName(state, profile) : state}
-                <button onClick={() => onStatesChange(filters.states.filter(s => s !== state))}
-                  className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
+            {filters.states.length > 0 && filters.states.length <= 3 && filters.states.map(s => (
+              <Badge key={s} variant="secondary" className="gap-1 text-[11px] h-6 rounded-lg">
+                <MapPin className="w-2.5 h-2.5" />{profile ? getLocationName(s, profile) : s}
+                <button onClick={() => onStatesChange(filters.states.filter(x => x !== s))} className="ml-0.5 hover:text-destructive"><X className="w-2.5 h-2.5" /></button>
               </Badge>
             ))}
             {filters.states.length > 3 && (
-              <Badge variant="secondary" className="gap-1 text-xs">
-                <MapPin className="w-3 h-3" />
-                {filters.states.length} {locationLabel.toLowerCase()}
-              </Badge>
+              <Badge variant="secondary" className="gap-1 text-[11px] h-6 rounded-lg"><MapPin className="w-2.5 h-2.5" />{filters.states.length} {locationLabel.toLowerCase()}</Badge>
             )}
-
-            {filters.selectedIndustries.map(industry => (
-              <Badge key={industry} variant="outline" className="gap-1 text-xs border-primary/50 text-primary">
-                <Factory className="w-3 h-3" />
-                {industry}
-                <button onClick={() => onIndustriesChange(filters.selectedIndustries.filter(i => i !== industry))}
-                  className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
+            {filters.selectedIndustries.map(ind => (
+              <Badge key={ind} variant="outline" className="gap-1 text-[11px] h-6 rounded-lg border-primary/40 text-primary">
+                {ind.split(' ')[0]}
+                <button onClick={() => onIndustriesChange(filters.selectedIndustries.filter(i => i !== ind))} className="ml-0.5 hover:text-destructive"><X className="w-2.5 h-2.5" /></button>
               </Badge>
             ))}
-
             {filters.selectedRoles.length > 0 && (
-              <Badge variant="outline" className="gap-1 text-xs">
-                <Briefcase className="w-3 h-3" />
-                {filters.selectedRoles.length} roles
-              </Badge>
+              <Badge variant="outline" className="text-[11px] h-6 rounded-lg"><Briefcase className="w-2.5 h-2.5 mr-1" />{filters.selectedRoles.length} roles</Badge>
             )}
-
-            <span className="text-xs text-muted-foreground ml-2">
-              → {effectiveSelectedStates.length} {locationLabel.toLowerCase()}, {effectiveSelectedRoles.length} roles
-            </span>
-          </div>
+            <button onClick={onClearAll} className="text-[11px] text-destructive/70 hover:text-destructive transition-colors ml-1">Clear all</button>
+          </>
         )}
       </div>
     </div>
@@ -173,44 +108,30 @@ function RegionFilterPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1">
-          <Globe2 className="w-4 h-4" />
-          {regionLabel}
-          {selectedRegions.length > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{selectedRegions.length}</Badge>
-          )}
-          <ChevronDown className="w-3 h-3 ml-1" />
-        </Button>
+        <button className={cn('pill-btn', selectedRegions.length > 0 && 'active')}>
+          <Globe2 className="w-3 h-3" />{regionLabel}
+          {selectedRegions.length > 0 && <span className="ml-0.5 font-bold">{selectedRegions.length}</span>}
+        </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
-        <div className="p-2 border-b">
-          <p className="text-sm font-medium">{profile?.displayName || ''} {regionLabel}</p>
-          <p className="text-xs text-muted-foreground">Select {regionLabel.toLowerCase()} to filter</p>
+      <PopoverContent className="w-56 p-0 bg-card border-border rounded-xl" align="start">
+        <div className="p-3 border-b border-border">
+          <p className="text-xs font-semibold">{regionLabel}</p>
         </div>
-        <ScrollArea className="max-h-64">
-          <div className="p-2 space-y-1">
+        <ScrollArea className="max-h-56">
+          <div className="p-2 space-y-0.5">
             {regionNames.map(region => (
-              <label key={region} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted/50">
-                <Checkbox
-                  checked={selectedRegions.includes(region)}
-                  onCheckedChange={(checked) => {
-                    if (checked) onChange([...selectedRegions, region]);
-                    else onChange(selectedRegions.filter(r => r !== region));
-                  }}
-                />
-                <div className="flex-1">
-                  <span className="text-sm font-medium">{region}</span>
-                  {profile?.regions[region] && (
-                    <p className="text-xs text-muted-foreground">{profile.regions[region].length} {profile.locationLabel?.toLowerCase()}</p>
-                  )}
-                </div>
+              <label key={region} className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50 text-xs">
+                <Checkbox checked={selectedRegions.includes(region)}
+                  onCheckedChange={(c) => { if (c) onChange([...selectedRegions, region]); else onChange(selectedRegions.filter(r => r !== region)); }} />
+                {region}
+                {profile?.regions[region] && <span className="ml-auto text-[11px] text-muted-foreground">{profile.regions[region].length}</span>}
               </label>
             ))}
           </div>
         </ScrollArea>
-        <div className="p-2 border-t flex gap-2">
-          <Button variant="ghost" size="sm" className="flex-1" onClick={() => onChange(regionNames)}>Select All</Button>
-          <Button variant="ghost" size="sm" className="flex-1" onClick={() => onChange([])}>Clear</Button>
+        <div className="p-2 border-t border-border flex gap-1.5">
+          <Button variant="ghost" size="sm" className="flex-1 h-7 text-xs" onClick={() => onChange(regionNames)}>All</Button>
+          <Button variant="ghost" size="sm" className="flex-1 h-7 text-xs" onClick={() => onChange([])}>Clear</Button>
         </div>
       </PopoverContent>
     </Popover>
