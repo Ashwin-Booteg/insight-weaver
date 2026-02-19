@@ -68,9 +68,28 @@ export function useCloudDataset(userId: string | null) {
       if (fetchError) throw fetchError;
 
       if (cloudDatasets && cloudDatasets.length > 0) {
+        // Dedup: keep only the FIRST (most recent) occurrence of each filename
+        const seenNames = new Set<string>();
+        const toDelete: string[] = [];
+        const uniqueDatasets = cloudDatasets.filter(ds => {
+          if (seenNames.has(ds.file_name)) {
+            toDelete.push(ds.id);
+            return false;
+          }
+          seenNames.add(ds.file_name);
+          return true;
+        });
+
+        // Delete duplicates silently in the background
+        if (toDelete.length > 0) {
+          for (const id of toDelete) {
+            supabase.from('datasets').delete().eq('id', id).then(() => {});
+          }
+          console.log(`Cleaned up ${toDelete.length} duplicate dataset(s)`);
+        }
+
         const datasetsWithRows: DatasetInfo[] = await Promise.all(
-          cloudDatasets.map(async (ds) => {
-            // Use paginated fetch — no row limit
+          uniqueDatasets.map(async (ds) => {
             const rows = await fetchAllRows(ds.id);
 
             const rawCols = ds.columns as any;
@@ -179,6 +198,22 @@ export function useCloudDataset(userId: string | null) {
 
     try {
       const datasetInfo = await parseExcelFile(file);
+
+      // Deduplication: delete any existing datasets with the same filename before inserting
+      const { data: existingDatasets } = await supabase
+        .from('datasets')
+        .select('id')
+        .eq('file_name', file.name)
+        .eq('user_id', userId);
+
+      if (existingDatasets && existingDatasets.length > 0) {
+        for (const existing of existingDatasets) {
+          await supabase.from('datasets').delete().eq('id', existing.id);
+        }
+        // Remove from local state too
+        setDatasets(prev => prev.filter(d => !existingDatasets.some(e => e.id === d.id)));
+        toast.info(`Replacing existing "${file.name}" with new version`);
+      }
 
       const slimColumns = datasetInfo.columns.map(col => ({
         name: col.name,
