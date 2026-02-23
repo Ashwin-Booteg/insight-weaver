@@ -29,7 +29,7 @@ async function fetchAllRows(datasetId: string): Promise<Array<{ row_data: unknow
   return allRows;
 }
 
-export function useCloudDataset(userId: string | null) {
+export function useCloudDataset(userId: string | null, sectorFilter?: string) {
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [activeDatasetId, setActiveDatasetId] = useState<string | null>(null);
   const [mergeAll, setMergeAll] = useState(false);
@@ -60,10 +60,11 @@ export function useCloudDataset(userId: string | null) {
 
     setIsSyncing(true);
     try {
-      const { data: cloudDatasets, error: fetchError } = await supabase
-        .from('datasets')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('datasets').select('*');
+      if (sectorFilter) {
+        query = query.eq('sector', sectorFilter);
+      }
+      const { data: cloudDatasets, error: fetchError } = await query.order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
@@ -282,7 +283,8 @@ export function useCloudDataset(userId: string | null) {
           user_id: userId,
           file_name: file.name,
           row_count: datasetInfo.rowCount,
-          columns: columnsPayload
+          columns: columnsPayload,
+          ...(sectorFilter ? { sector: sectorFilter } : {})
         } as any)
         .select()
         .single();

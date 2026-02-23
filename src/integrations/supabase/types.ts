@@ -91,6 +91,7 @@ export type Database = {
           file_name: string
           id: string
           row_count: number
+          sector: string
           updated_at: string
           user_id: string
         }
@@ -100,6 +101,7 @@ export type Database = {
           file_name: string
           id?: string
           row_count?: number
+          sector?: string
           updated_at?: string
           user_id: string
         }
@@ -109,6 +111,7 @@ export type Database = {
           file_name?: string
           id?: string
           row_count?: number
+          sector?: string
           updated_at?: string
           user_id?: string
         }
