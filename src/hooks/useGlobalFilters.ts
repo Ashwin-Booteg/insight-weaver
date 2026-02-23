@@ -9,7 +9,9 @@ import {
   RoleRegionData,
   ParetoDataPoint,
   IndustryCategory,
+  OrgSector,
   classifyRoleIndustry,
+  classifyRoleSector,
   initialGlobalFilterState
 } from '@/types/filters';
 import { GeographyProfile, GEOGRAPHY_PROFILES, getRegionFromLocation, getLocationsFromRegions, getLocationName } from '@/types/geography';
@@ -58,6 +60,7 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
       metadata.push({
         columnName: col.name,
         industry: classifyRoleIndustry(col.name),
+        sector: classifyRoleSector(col.name),
         totalPeople: roleTotal,
         percentOfTotal: 0
       });
@@ -83,6 +86,18 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     return byIndustry;
   }, [roleMetadata]);
 
+  const rolesBySector = useMemo(() => {
+    const bySector: Record<OrgSector, string[]> = {
+      'Production Companies': [],
+      'Unions': [],
+      'Guilds & Associations': []
+    };
+    for (const role of roleMetadata) {
+      bySector[role.sector].push(role.columnName);
+    }
+    return bySector;
+  }, [roleMetadata]);
+
   // Available states from data
   const availableStates = useMemo(() => {
     if (!stateColumn) return [];
@@ -94,28 +109,36 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     return Array.from(states).sort();
   }, [data, stateColumn]);
 
-  // Compute effective selected roles
+  // Compute effective selected roles (sector + industry + manual)
   const effectiveSelectedRoles = useMemo(() => {
-    if (filters.selectedIndustries.length === 0 && filters.selectedRoles.length === 0) {
-      return roleColumns.map(c => c.name);
-    }
+    let baseRoles = roleColumns.map(c => c.name);
 
-    let industryRoles: string[] = [];
-    if (filters.selectedIndustries.length > 0) {
-      for (const industry of filters.selectedIndustries) {
-        industryRoles.push(...rolesByIndustry[industry]);
+    // Apply sector filter first
+    if (filters.selectedSectors.length > 0) {
+      const sectorRoles = new Set<string>();
+      for (const sector of filters.selectedSectors) {
+        for (const r of rolesBySector[sector]) sectorRoles.add(r);
       }
+      baseRoles = baseRoles.filter(r => sectorRoles.has(r));
     }
 
-    if (filters.selectedRoles.length === 0) return industryRoles;
-    if (filters.selectedIndustries.length === 0) return filters.selectedRoles;
-
-    if (filters.industryFilterMode === 'AND') {
-      return filters.selectedRoles.filter(r => industryRoles.includes(r));
-    } else {
-      return [...new Set([...filters.selectedRoles, ...industryRoles])];
+    // Then apply industry filter
+    if (filters.selectedIndustries.length > 0) {
+      const industryRoleSet = new Set<string>();
+      for (const industry of filters.selectedIndustries) {
+        for (const r of rolesByIndustry[industry]) industryRoleSet.add(r);
+      }
+      baseRoles = baseRoles.filter(r => industryRoleSet.has(r));
     }
-  }, [filters.selectedIndustries, filters.selectedRoles, filters.industryFilterMode, rolesByIndustry, roleColumns]);
+
+    // Then apply manual role selection
+    if (filters.selectedRoles.length > 0) {
+      const manualSet = new Set(filters.selectedRoles);
+      baseRoles = baseRoles.filter(r => manualSet.has(r));
+    }
+
+    return baseRoles;
+  }, [filters.selectedSectors, filters.selectedIndustries, filters.selectedRoles, rolesBySector, rolesByIndustry, roleColumns]);
 
   // Compute effective selected states (using dynamic profile)
   const effectiveSelectedStates = useMemo(() => {
@@ -172,6 +195,9 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     const industryTotals: Record<IndustryCategory, number> = {
       'Movie & Entertainment': 0, 'Music & Audio': 0, 'Fashion & Apparel': 0
     };
+    const sectorTotals: Record<OrgSector, number> = {
+      'Production Companies': 0, 'Unions': 0, 'Guilds & Associations': 0
+    };
     const regionTotals: Record<string, number> = {};
     for (const rn of regionNames) regionTotals[rn] = 0;
 
@@ -189,6 +215,7 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
           totalPeople += value;
           roleBreakdown[col.name] = (roleBreakdown[col.name] || 0) + value;
           industryTotals[classifyRoleIndustry(col.name)] += value;
+          sectorTotals[classifyRoleSector(col.name)] += value;
 
           if (stateValue) {
             stateBreakdown[stateValue] = (stateBreakdown[stateValue] || 0) + value;
@@ -232,6 +259,7 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
       roleCoverage: effectiveSelectedRoles.length,
       roleBreakdown,
       industryBreakdown: industryTotals,
+      sectorBreakdown: sectorTotals,
       regionBreakdown: regionTotals,
       stateBreakdown
     };
@@ -382,6 +410,10 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     setFilters(prev => ({ ...prev, industryFilterMode: mode }));
   }, []);
 
+  const setSelectedSectors = useCallback((sectors: OrgSector[]) => {
+    setFilters(prev => ({ ...prev, selectedSectors: sectors }));
+  }, []);
+
   const selectTop20Roles = useCallback(() => {
     setFilters(prev => ({ ...prev, selectedRoles: top20Roles }));
   }, [top20Roles]);
@@ -404,6 +436,7 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     setSelectedRoles,
     setSelectedIndustries,
     setIndustryFilterMode,
+    setSelectedSectors,
     selectTop20Roles,
     selectAllStates,
     clearAllFilters,
@@ -412,6 +445,7 @@ export function useGlobalFilters({ data, columns, geographyType }: UseGlobalFilt
     availableStates,
     roleMetadata,
     rolesByIndustry,
+    rolesBySector,
     top20Roles,
     filteredData,
     stateRoleTotals,

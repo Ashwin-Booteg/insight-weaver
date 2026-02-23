@@ -83,6 +83,13 @@ export const INDUSTRY_CATEGORIES = [
   'Fashion & Apparel'
 ] as const;
 
+// Sector categories for organizational classification
+export const SECTOR_CATEGORIES = [
+  'Production Companies',
+  'Unions',
+  'Guilds & Associations'
+] as const;
+
 // Audience levels for segmentation
 export const AUDIENCE_LEVELS = [
   'Enterprise',
