@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import Dashboard from "./pages/Dashboard";
 import ProductionCompanies from "./pages/ProductionCompanies";
+import TalentUsers from "./pages/TalentUsers";
 import Unions from "./pages/Unions";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -21,6 +22,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/talent-users" element={<TalentUsers />} />
             <Route path="/production-companies" element={<ProductionCompanies />} />
             <Route path="/unions" element={<Unions />} />
             <Route path="/auth" element={<Auth />} />
