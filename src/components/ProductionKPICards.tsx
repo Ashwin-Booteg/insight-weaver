@@ -225,7 +225,9 @@ export function ProductionKPICards({ data, columns }: ProductionKPICardsProps) {
         </div>
 
         {/* Industry Cards — one per industry with donut-style visual */}
-        <div className="col-span-12 md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className={cn("col-span-12 md:col-span-8 grid grid-cols-1 gap-3", 
+          sortedIndustries.length === 1 ? "sm:grid-cols-1" : sortedIndustries.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"
+        )}>
           {sortedIndustries.slice(0, 3).map(([industry, count], i) => {
             const pct = m.totalCompanies > 0 ? Math.round((count / m.totalCompanies) * 100) : 0;
             const colors = [
