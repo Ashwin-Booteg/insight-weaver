@@ -325,17 +325,19 @@ const SectorPage: React.FC<SectorPageProps> = ({
 
           <main className="flex-1 overflow-y-auto scrollbar-thin">
             <div className="dashboard-main">
-              <section className="mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className={cn("w-1 h-4 rounded-full", sectorTheme === 'blue' ? "bg-blue-500" : sectorTheme === 'teal' ? "bg-teal-500" : "bg-amber-500")} />
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Metrics</h2>
-                </div>
-                {isProduction ? (
-                  <ProductionKPICards data={filteredData} columns={activeDataset.columns} />
-                ) : (
-                  <ExtendedKPICards data={extendedKPIs} profile={profile} targetingMetrics={targetingMetrics} />
-                )}
-              </section>
+              {!isUnion && (
+                <section className="mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className={cn("w-1 h-4 rounded-full", sectorTheme === 'blue' ? "bg-blue-500" : sectorTheme === 'teal' ? "bg-teal-500" : "bg-amber-500")} />
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Metrics</h2>
+                  </div>
+                  {isProduction ? (
+                    <ProductionKPICards data={filteredData} columns={activeDataset.columns} />
+                  ) : (
+                    <ExtendedKPICards data={extendedKPIs} profile={profile} targetingMetrics={targetingMetrics} />
+                  )}
+                </section>
+              )}
 
               {isProduction ? (
                 <div className="space-y-8">
