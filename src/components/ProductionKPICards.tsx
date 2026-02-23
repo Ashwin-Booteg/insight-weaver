@@ -225,17 +225,14 @@ export function ProductionKPICards({ data, columns }: ProductionKPICardsProps) {
         </div>
 
         {/* Industry Cards — one per industry with donut-style visual */}
-        <div className={cn("col-span-12 md:col-span-8 grid grid-cols-1 gap-3", 
-          sortedIndustries.length === 1 ? "sm:grid-cols-1" : sortedIndustries.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"
-        )}>
-          {sortedIndustries.slice(0, 3).map(([industry, count], i) => {
+        <div className="col-span-12 md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { industry: 'Film/TV', icon: Film, colors: { ring: 'border-chart-rose', text: 'text-chart-rose', bg: 'bg-chart-rose/10', bar: 'bg-chart-rose' } },
+            { industry: 'Music', icon: Music, colors: { ring: 'border-chart-purple', text: 'text-chart-purple', bg: 'bg-chart-purple/10', bar: 'bg-chart-purple' } },
+            { industry: 'Fashion', icon: Shirt, colors: { ring: 'border-chart-amber', text: 'text-chart-amber', bg: 'bg-chart-amber/10', bar: 'bg-chart-amber' } },
+          ].map(({ industry, icon: IconComp, colors }) => {
+            const count = m.industryBreakdown[industry] || 0;
             const pct = m.totalCompanies > 0 ? Math.round((count / m.totalCompanies) * 100) : 0;
-            const colors = [
-              { ring: 'border-chart-rose', text: 'text-chart-rose', bg: 'bg-chart-rose/10', bar: 'bg-chart-rose' },
-              { ring: 'border-chart-purple', text: 'text-chart-purple', bg: 'bg-chart-purple/10', bar: 'bg-chart-purple' },
-              { ring: 'border-chart-amber', text: 'text-chart-amber', bg: 'bg-chart-amber/10', bar: 'bg-chart-amber' },
-            ][i];
-            const IconComp = Object.entries(INDUSTRY_ICONS).find(([k]) => industry.toLowerCase().includes(k.toLowerCase()))?.[1] || Briefcase;
             return (
               <div key={industry} className="rounded-xl border border-border bg-card p-5 flex flex-col justify-between gap-4">
                 <div className="flex items-start justify-between">
