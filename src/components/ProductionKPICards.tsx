@@ -45,27 +45,94 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
   const cities: Record<string, number> = {};
   const industries: Record<string, number> = {};
 
+  // Detect if data uses __EMPTY columns (Excel-parsed format)
+  // Directory rows have: State col, __EMPTY=Company, __EMPTY_1=City, __EMPTY_2=Specialty, __EMPTY_3=Type
+  // Summary rows have: State col, __EMPTY=MovieCount, __EMPTY_1=MusicCount, etc.
+  const hasEmptyKeys = data.length > 0 && '__EMPTY' in (data[0] || {});
+
+  // Find the state column key for __EMPTY-style data
+  const stateColKey = hasEmptyKeys
+    ? Object.keys(data[0] || {}).find(k =>
+        !k.startsWith('__EMPTY') && !k.startsWith('_') && !k.includes('normalized') && !k.includes('category') && !k.includes('Directory')
+      ) || ''
+    : '';
+  // Find directory state column (e.g., "USA Movie Production Companies – State-wise Directory")
+  const dirColKey = hasEmptyKeys
+    ? Object.keys(data[0] || {}).find(k => k.includes('Directory')) || ''
+    : '';
+
   for (const row of data) {
-    const own = (row['Ownership'] as string) || (row['Company Type'] as string) || 'Unknown';
-    ownership[own] = (ownership[own] || 0) + 1;
+    let st = '';
+    let city = '';
+    let own = '';
+    let sz = '';
+    let foc = '';
+    let ind = '';
 
-    const sz = (row['Size bracket'] as string) || '';
+    if (hasEmptyKeys) {
+      // Determine if this is a directory row (company listing) or summary row
+      const emptyVal = String(row['__EMPTY'] || '');
+      const empty3Val = String(row['__EMPTY_3'] || '');
+      const stateVal = String(row[stateColKey] || row[dirColKey] || '');
+
+      // Skip header rows
+      if (stateVal === 'State' || emptyVal === 'Movie Companies' || emptyVal === 'Company Name' || emptyVal === 'Movie Unions') continue;
+      // Skip summary/total rows
+      if (stateVal.toUpperCase().includes('TOTAL') || stateVal.toUpperCase().includes('GRAND')) continue;
+
+      // Check if it's a directory row: __EMPTY_3 contains type like "Major Studio", "Independent", "Streaming"
+      const isDirectory = empty3Val && (
+        empty3Val.includes('Studio') || empty3Val.includes('Independent') || empty3Val.includes('Streaming') ||
+        empty3Val.includes('Major') || empty3Val.includes('Indie') || empty3Val.includes('Label') ||
+        empty3Val.includes('Network') || empty3Val.includes('Brand') || empty3Val.includes('House') ||
+        empty3Val.includes('Agency') || empty3Val.includes('Publisher') || empty3Val.includes('Co-op') ||
+        empty3Val.includes('Conglomerate') || empty3Val.includes('Platform')
+      );
+
+      if (isDirectory) {
+        st = stateVal;
+        city = String(row['__EMPTY_1'] || '');
+        foc = String(row['__EMPTY_2'] || '');
+        own = empty3Val;
+        // Classify industry from focus/specialty
+        const focLower = foc.toLowerCase();
+        if (focLower.includes('film') || focLower.includes('tv') || focLower.includes('animation') || focLower.includes('vfx') || focLower.includes('post-prod')) {
+          ind = 'Film/TV';
+        } else if (focLower.includes('music') || focLower.includes('record') || focLower.includes('audio') || focLower.includes('sound') || focLower.includes('publishing')) {
+          ind = 'Music';
+        } else if (focLower.includes('fashion') || focLower.includes('apparel') || focLower.includes('luxury') || focLower.includes('retail') || focLower.includes('textile') || focLower.includes('footwear') || focLower.includes('design') || focLower.includes('cosmetic') || focLower.includes('beauty')) {
+          ind = 'Fashion';
+        } else {
+          ind = 'Other';
+        }
+        // Map ownership to simplified categories
+        if (own.includes('Major')) sz = 'Major';
+        else if (own.includes('Independent') || own.includes('Indie')) sz = 'Indie/Notable';
+        else if (own.includes('Streaming')) sz = 'Streaming';
+        else sz = own;
+      } else {
+        // Summary row — skip for company-level metrics
+        continue;
+      }
+    } else {
+      // Named columns (starter dataset)
+      own = (row['Ownership'] as string) || (row['Company Type'] as string) || 'Unknown';
+      sz = (row['Size bracket'] as string) || '';
+      foc = (row['Focus'] as string) || (row['Specialty'] as string) || '';
+      st = (row['HQ State'] as string) || (row['State'] as string) || '';
+      city = (row['HQ City'] as string) || (row['City'] as string) || '';
+      ind = (row['Industry'] as string) || '';
+    }
+
+    if (own) ownership[own] = (ownership[own] || 0) + 1;
     if (sz) size[sz] = (size[sz] || 0) + 1;
-
-    const foc = (row['Focus'] as string) || (row['Specialty'] as string) || '';
     if (foc) focus[foc] = (focus[foc] || 0) + 1;
-
-    const st = (row['HQ State'] as string) || (row['State'] as string) || '';
     if (st) states[st] = (states[st] || 0) + 1;
-
-    const city = (row['HQ City'] as string) || (row['City'] as string) || '';
     if (city) cities[city] = (cities[city] || 0) + 1;
-
-    const ind = (row['Industry'] as string) || '';
     if (ind) industries[ind] = (industries[ind] || 0) + 1;
   }
 
-  const total = data.length;
+  const total = Object.values(states).reduce((a, b) => a + b, 0) || Object.values(ownership).reduce((a, b) => a + b, 0);
   const sortedStates = Object.entries(states).sort((a, b) => b[1] - a[1]);
   const sortedCities = Object.entries(cities).sort((a, b) => b[1] - a[1]);
   const sortedIndustries = Object.entries(industries).sort((a, b) => b[1] - a[1]);
@@ -86,7 +153,7 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
   const marketLeader = sortedOwnership[0];
 
   const publicCount = (ownership['Public'] || 0) + (ownership['Co-op'] || 0);
-  const privateCount = ownership['Private'] || 0;
+  const privateCount = (ownership['Private'] || 0) + (ownership['Private (subsidiary)'] || 0);
   const majorCount = (size['Major'] || 0) + (size['Major/Studio'] || 0) + (ownership['Major Studio'] || 0) + (ownership['Major Label'] || 0) + (ownership['Major Network'] || 0);
   const indieCount = (size['Indie/Notable'] || 0) + (ownership['Independent'] || 0);
 
