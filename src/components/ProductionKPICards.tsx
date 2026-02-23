@@ -127,7 +127,7 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
     if (ind) industries[ind] = (industries[ind] || 0) + 1;
   }
 
-  const total = Object.values(states).reduce((a, b) => a + b, 0) || Object.values(ownership).reduce((a, b) => a + b, 0);
+  const total = data.length;
   const sortedStates = Object.entries(states).sort((a, b) => b[1] - a[1]);
   const sortedCities = Object.entries(cities).sort((a, b) => b[1] - a[1]);
   const sortedIndustries = Object.entries(industries).sort((a, b) => b[1] - a[1]);
