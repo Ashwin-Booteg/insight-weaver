@@ -11,33 +11,98 @@ export function parseExcelFile(file: File): Promise<DatasetInfo> {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-          raw: false,
-          dateNF: 'yyyy-mm-dd'
-        });
-        
-        if (jsonData.length === 0) {
+        // Try multi-sheet merge: parse each sheet and group by compatible column sets
+        const allSheetData: { sheetName: string; rows: Record<string, unknown>[]; colNames: string[] }[] = [];
+
+        for (const sheetName of workbook.SheetNames) {
+          const ws = workbook.Sheets[sheetName];
+          let rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { raw: false, dateNF: 'yyyy-mm-dd' });
+
+          // Skip sheets with no data
+          if (rows.length === 0) continue;
+
+          // Filter out rows that look like title/header rows (only 1 non-empty cell, or first column matches sheet title)
+          const colNames = Object.keys(rows[0]);
+          rows = rows.filter(row => {
+            const nonEmpty = colNames.filter(c => row[c] !== null && row[c] !== undefined && String(row[c]).trim() !== '');
+            if (nonEmpty.length <= 1) return false; // title rows or section dividers
+            return true;
+          });
+
+          if (rows.length === 0) continue;
+
+          // Infer industry from sheet name for directory-style sheets
+          const lowerSheet = sheetName.toLowerCase();
+          let sheetIndustry: string | null = null;
+          if (lowerSheet.includes('movie') || lowerSheet.includes('film')) sheetIndustry = 'Film/TV';
+          else if (lowerSheet.includes('music')) sheetIndustry = 'Music';
+          else if (lowerSheet.includes('fashion')) sheetIndustry = 'Fashion';
+
+          // Add sheet-derived "Industry" column if it has Company Name but no Industry column
+          const hasCompany = colNames.some(c => c.toLowerCase().includes('company'));
+          const hasIndustry = colNames.some(c => c.toLowerCase() === 'industry');
+          if (sheetIndustry && hasCompany && !hasIndustry) {
+            rows = rows.map(row => ({ ...row, Industry: sheetIndustry }));
+          }
+
+          allSheetData.push({ sheetName, rows, colNames: Object.keys(rows[0]) });
+        }
+
+        if (allSheetData.length === 0) {
           throw new Error('No data found in the Excel file');
         }
-        
-        const columns = detectColumnTypes(jsonData);
+
+        // Group sheets by compatible columns (>60% overlap)
+        // Pick the largest compatible group; if directory sheets exist, prefer those over summaries
+        let bestGroup = allSheetData;
+
+        if (allSheetData.length > 1) {
+          // Check if sheets 2+ share a column structure (directory sheets)
+          const groups: typeof allSheetData[] = [];
+          const used = new Set<number>();
+
+          for (let i = 0; i < allSheetData.length; i++) {
+            if (used.has(i)) continue;
+            const group = [allSheetData[i]];
+            used.add(i);
+            for (let j = i + 1; j < allSheetData.length; j++) {
+              if (used.has(j)) continue;
+              const overlap = allSheetData[i].colNames.filter(c => allSheetData[j].colNames.includes(c)).length;
+              const maxLen = Math.max(allSheetData[i].colNames.length, allSheetData[j].colNames.length);
+              if (maxLen > 0 && overlap / maxLen > 0.5) {
+                group.push(allSheetData[j]);
+                used.add(j);
+              }
+            }
+            groups.push(group);
+          }
+
+          // Pick group with most total rows (prefer detail sheets over summary)
+          bestGroup = groups.reduce((best, g) => {
+            const bestRows = best.reduce((s, x) => s + x.rows.length, 0);
+            const gRows = g.reduce((s, x) => s + x.rows.length, 0);
+            return gRows > bestRows ? g : best;
+          }, groups[0]);
+        }
+
+        // Merge the best group's rows
+        const mergedRows = bestGroup.flatMap(s => s.rows);
+
+        const columns = detectColumnTypes(mergedRows);
         
         // Auto-detect geography from location column values
         const stateColumn = columns.find(c => c.isState);
         let geographyProfile: GeographyProfile = GEOGRAPHY_PROFILES.GENERIC;
         
         if (stateColumn) {
-          const locationValues = jsonData
+          const locationValues = mergedRows
             .slice(0, 200)
             .map(row => String(row[stateColumn.name] || ''))
             .filter(v => v !== '');
           geographyProfile = detectGeography(locationValues);
         }
         
-        const normalizedData = normalizeData(jsonData, columns, geographyProfile);
+        const normalizedData = normalizeData(mergedRows, columns, geographyProfile);
         
         const datasetInfo: DatasetInfo = {
           id: generateId(),
