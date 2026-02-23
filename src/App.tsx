@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import Dashboard from "./pages/Dashboard";
+import ProductionCompanies from "./pages/ProductionCompanies";
+import Unions from "./pages/Unions";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -19,6 +21,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/production-companies" element={<ProductionCompanies />} />
+            <Route path="/unions" element={<Unions />} />
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
