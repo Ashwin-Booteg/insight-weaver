@@ -11,6 +11,7 @@ import { GlobalFilterBar } from '@/components/filters/GlobalFilterBar';
 import { DataTable } from '@/components/DataTable';
 import { ProductionCompanyTable } from '@/components/ProductionCompanyTable';
 import { ProductionAcquisitionDashboard } from '@/components/ProductionAcquisitionDashboard';
+import { UnionAcquisitionDashboard } from '@/components/UnionAcquisitionDashboard';
 import { FilteredStateTable, RoleSummaryTable } from '@/components/FilteredStateTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
@@ -159,6 +160,7 @@ const SectorPage: React.FC<SectorPageProps> = ({
 
   const EmptyIcon = emptyIcon === 'factory' ? Factory : Users;
   const isProduction = sector === 'production_companies';
+  const isUnion = sector === 'unions';
   const isTalent = sector === 'talent_users';
   // Color helper: production=blue, talent=teal, unions=amber
   const sectorTheme = isProduction ? 'blue' : isTalent ? 'teal' : 'amber';
@@ -350,6 +352,28 @@ const SectorPage: React.FC<SectorPageProps> = ({
                   <section>
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-1 h-4 rounded-full bg-blue-500" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI Insights</h2>
+                    </div>
+                    <FilterAwareAIInsights datasetId={activeDatasetId} filters={globalFilters} kpis={extendedKPIs}
+                      effectiveStates={effectiveSelectedStates} effectiveRoles={effectiveSelectedRoles}
+                      filteredData={filteredData} columns={activeDataset.columns} />
+                  </section>
+                </div>
+              ) : isUnion ? (
+                <div className="space-y-8">
+                  <UnionAcquisitionDashboard data={filteredData} columns={activeDataset.columns} />
+
+                  <section>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-4 rounded-full bg-amber-500" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Union Directory</h2>
+                    </div>
+                    <DataTable data={filteredData} columns={activeDataset.columns} />
+                  </section>
+
+                  <section>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-4 rounded-full bg-amber-500" />
                       <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI Insights</h2>
                     </div>
                     <FilterAwareAIInsights datasetId={activeDatasetId} filters={globalFilters} kpis={extendedKPIs}
