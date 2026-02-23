@@ -1,73 +1,59 @@
 
 
-# Three-Section Industry Classification: Production Companies, Unions, and Guilds
+## Plan: Redesign Production Companies Dashboard for Customer Acquisition
 
-## Overview
-Restructure the dashboard to display data across three distinct organizational sections -- **Production Companies**, **Unions**, and **Guilds & Associations** -- each with its own KPI cards, charts, and breakdowns. Roles will be auto-classified using keyword matching.
+### Problem
+The Production Companies page currently shares the same tab structure (Overview, Charts, Maps, Tables) and many workforce-oriented charts (TopStatesChart, IndustryDonutChart, RegionIndustryStackedChart, etc.) that were designed for talent/workforce data. These are irrelevant to a sales/acquisition perspective on production companies.
 
----
+### Data Available
+The dataset contains ~191 production companies across 3 industries (Movie, Music, Fashion) with columns: State, Company Name, City, Specialty, Company Type (Major Studio, Independent, Studio Facility, Private, Public, etc.), and Notable Titles/Artists.
 
-## Section Breakdown
+### New Design: Customer Acquisition Dashboard
 
-### 1. Production Companies
-The existing three sub-categories stay:
-- Movie & Entertainment
-- Music & Audio
-- Fashion & Apparel
+Replace the 5-tab layout (Overview, Charts, Maps, Tables, AI) for production companies with a **single scrollable page** that has distinct sections focused on acquisition intelligence:
 
-### 2. Unions
-Labor unions and trade organizations representing workers:
-- Keywords: `Union`, `Local`, `IATSE`, `Teamster`, `Stagehand`, `Grip`, `Electrician`, `Carpenter`, `Prop`, `Scenic`, `Paint`, `Rigger`, `Loader`
+**Section 1: Key Metrics (existing ProductionKPICards, refined)**
+- Keep the hero card, industry breakdown, gauges, and highlight picks
+- Remove the "Ownership Type", "Geographic Distribution", and "Specialty/Focus" breakdown panels (Row 4) since they duplicate what the new sections below will show better
 
-### 3. Guilds & Associations
-Professional guilds and membership associations:
-- Keywords: `Guild`, `SAG`, `AFTRA`, `DGA`, `WGA`, `PGA`, `Academy`, `Society`, `Association`, `Member`, `Fellow`, `Chapter`, `Council`
+**Section 2: Acquisition Opportunity Matrix**
+- A grid showing each state as a card with: total companies, breakdown by type (Major/Indie/Facility), and an "opportunity score" (states with fewer companies = higher opportunity for new customer outreach)
+- Sorted by opportunity score descending
 
-Roles not matching Union or Guild keywords fall into Production Companies (current default behavior).
+**Section 3: Target Segmentation**
+- **By Company Type**: Visual cards showing Major Studios, Independents, Studio Facilities, etc. with count, percentage, top states for each, and a "prospect density" indicator
+- **By Specialty**: What specialties exist (Film/TV Production, Animation, Distribution, etc.) and how many companies per specialty -- helps identify niche acquisition targets
 
----
+**Section 4: Geographic Hotspots**
+- Horizontal bar chart of companies per state, color-coded by industry mix
+- "Untapped Markets" callout: states with low company counts but high industry diversity
 
-## Changes
+**Section 5: Company Directory** (existing ProductionCompanyTable)
+- The full searchable/sortable table, kept as the final section
 
-### A. Type System (`src/types/filters.ts`)
-- Add a new top-level type `OrgSector = 'Production Companies' | 'Unions' | 'Guilds & Associations'`
-- Add `SECTOR_KEYWORDS` dictionary with keywords for Unions and Guilds (Production remains the default)
-- Add `classifyRoleSector(roleName)` function
-- Extend `RoleMetadata` with a `sector: OrgSector` field
-- Extend `ExtendedKPIData` with `sectorBreakdown: Record<OrgSector, number>`
-- Extend `GlobalFilterState` with `selectedSectors: OrgSector[]`
+### Files to Modify
 
-### B. Filter Hook (`src/hooks/useGlobalFilters.ts`)
-- Compute `rolesBySector` grouping (similar to existing `rolesByIndustry`)
-- Add `sectorBreakdown` to `extendedKPIs` computation
-- Add `setSectors` filter action
-- When sectors are selected, filter `effectiveSelectedRoles` to only roles in those sectors
+1. **`src/components/SectorPage.tsx`**
+   - For `isProduction`, remove the entire `<Tabs>` block (Overview, Charts, Maps, Tables, AI tabs)
+   - Replace with a single scrollable layout: ProductionKPICards -> new `ProductionAcquisitionDashboard` component -> ProductionCompanyTable
+   - Keep the GlobalFilterBar and header as-is
 
-### C. New Component: `SectorDashboardSections.tsx`
-A component rendering 3 collapsible/tabbed sections, each containing:
-- A section header with icon, sector name, total people count, and role count
-- A mini KPI row (total people, top role, top location, industry split for Production)
-- A horizontal bar chart of top 10 roles in that sector
-- A region breakdown bar for that sector's data
+2. **`src/components/ProductionKPICards.tsx`**
+   - Remove Row 4 (the three BreakdownPanel components for Ownership, Geographic, Specialty) since this info moves to the new acquisition sections
+   - Keep Rows 1-3 (Hero, Industry cards, Gauges, Highlight Picks) as the top-level KPIs
 
-### D. Dashboard Integration (`src/pages/Dashboard.tsx`)
-- Add `SectorDashboardSections` between the KPI cards and the Tabs
-- Pass filtered data, role metadata, and KPIs per sector
-- Add sector filter chips to the `GlobalFilterBar`
+3. **`src/components/ProductionAcquisitionDashboard.tsx`** (new file)
+   - **Acquisition Opportunity Matrix**: For each state, compute an opportunity score (inverse of company density), show as ranked cards with sparkline-style indicators
+   - **Target Segmentation**: Company Type cards with state distribution per type; Specialty breakdown with counts
+   - **Geographic Hotspots**: Stacked bar chart (recharts) showing companies per state split by Movie/Music/Fashion
+   - **Untapped Markets**: Auto-identify states with fewer companies but present across multiple industries
+   - Receives `data` and `columns` as props (same as ProductionKPICards)
 
-### E. Filter Bar Update (`src/components/filters/GlobalFilterBar.tsx`)
-- Add a "Sector" filter section with 3 checkboxes (Production Companies, Unions, Guilds & Associations)
-- Selecting a sector filters roles/KPIs to only that sector's roles
+### Technical Details
 
-### F. Analytics Type Update (`src/types/analytics.ts`)
-- Add `SECTOR_CATEGORIES` constant for the 3 sectors
-
----
-
-## Technical Notes
-
-- The keyword-based classification runs in the same `classifyRoleSector()` pattern as the existing `classifyRoleIndustry()` -- it checks Union keywords first, then Guild keywords, then defaults to Production Companies.
-- For Production Company roles, the existing industry sub-classification (Movie/Music/Fashion) still applies and is shown as a nested breakdown within the Production section.
-- All existing charts, maps, and tables continue to work unchanged -- the new sections are additive.
-- No database changes required; classification is computed client-side from column names.
+- The new `ProductionAcquisitionDashboard` component will reuse the same `computeMetrics`-style approach from ProductionKPICards, extracting State, Company Type, Industry, Specialty, City from each row
+- Recharts `BarChart` with stacked bars for the Geographic Hotspots section
+- Opportunity score formula: `100 - (stateCompanyCount / maxStateCount * 100)` -- higher score = less saturated market
+- All sections are filter-aware (they consume `filteredData` from the parent)
+- The AI Insights tab is preserved as a floating button or small section at the bottom for production too
 
