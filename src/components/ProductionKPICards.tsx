@@ -94,14 +94,14 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
       own = empty3Val || 'Unknown';
       // Classify industry from focus/specialty
       const focLower = foc.toLowerCase();
-      if (focLower.includes('film') || focLower.includes('tv') || focLower.includes('animation') || focLower.includes('vfx') || focLower.includes('post-prod') || focLower.includes('production') || focLower.includes('cinema')) {
+      if (focLower.includes('film') || focLower.includes('tv') || focLower.includes('animation') || focLower.includes('vfx') || focLower.includes('post-prod') || focLower.includes('production') || focLower.includes('cinema') || focLower.includes('documentary') || focLower.includes('studio') || focLower.includes('entertainment') || focLower.includes('media') || focLower.includes('content') || focLower.includes('video') || focLower.includes('sports') || focLower.includes('nature')) {
         ind = 'Film/TV';
-      } else if (focLower.includes('music') || focLower.includes('record') || focLower.includes('audio') || focLower.includes('sound') || focLower.includes('publishing') || focLower.includes('hip-hop') || focLower.includes('jazz') || focLower.includes('country') || focLower.includes('latin')) {
+      } else if (focLower.includes('music') || focLower.includes('record') || focLower.includes('audio') || focLower.includes('sound') || focLower.includes('publishing') || focLower.includes('hip-hop') || focLower.includes('jazz') || focLower.includes('country') || focLower.includes('latin') || focLower.includes('concert') || focLower.includes('touring')) {
         ind = 'Music';
-      } else if (focLower.includes('fashion') || focLower.includes('apparel') || focLower.includes('luxury') || focLower.includes('retail') || focLower.includes('textile') || focLower.includes('footwear') || focLower.includes('design') || focLower.includes('cosmetic') || focLower.includes('beauty') || focLower.includes('clothing') || focLower.includes('jewelry') || focLower.includes('accessories')) {
+      } else if (focLower.includes('fashion') || focLower.includes('apparel') || focLower.includes('luxury') || focLower.includes('retail') || focLower.includes('textile') || focLower.includes('footwear') || focLower.includes('design') || focLower.includes('cosmetic') || focLower.includes('beauty') || focLower.includes('clothing') || focLower.includes('jewelry') || focLower.includes('accessories') || focLower.includes('brand') || focLower.includes('model')) {
         ind = 'Fashion';
       } else {
-        ind = foc || 'Other';
+        ind = 'Film/TV';
       }
       // Map ownership to simplified categories
       const ownLower = own.toLowerCase();
