@@ -405,7 +405,8 @@ const SectorPage: React.FC<SectorPageProps> = ({
 
                 <TabsContent value="ai-insights" className="mt-0">
                   <FilterAwareAIInsights datasetId={activeDatasetId} filters={globalFilters} kpis={extendedKPIs}
-                    effectiveStates={effectiveSelectedStates} effectiveRoles={effectiveSelectedRoles} />
+                    effectiveStates={effectiveSelectedStates} effectiveRoles={effectiveSelectedRoles}
+                    filteredData={filteredData} columns={activeDataset.columns} />
                 </TabsContent>
               </Tabs>
             </div>
