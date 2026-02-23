@@ -5,6 +5,7 @@ import { useCloudDataset } from '@/hooks/useCloudDataset';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
 import { FileUpload, UploadHistoryList } from '@/components/FileUpload';
 import { ExtendedKPICards } from '@/components/ExtendedKPICards';
+import { ProductionKPICards } from '@/components/ProductionKPICards';
 import { GeoMap, MetricSelector } from '@/components/GeoMap';
 import { GlobalFilterBar } from '@/components/filters/GlobalFilterBar';
 import { DataTable } from '@/components/DataTable';
@@ -325,7 +326,11 @@ const SectorPage: React.FC<SectorPageProps> = ({
                   <div className={cn("w-1 h-4 rounded-full", sectorTheme === 'blue' ? "bg-blue-500" : sectorTheme === 'teal' ? "bg-teal-500" : "bg-amber-500")} />
                   <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Metrics</h2>
                 </div>
-                <ExtendedKPICards data={extendedKPIs} profile={profile} targetingMetrics={targetingMetrics} />
+                {isProduction ? (
+                  <ProductionKPICards data={filteredData} columns={activeDataset.columns} />
+                ) : (
+                  <ExtendedKPICards data={extendedKPIs} profile={profile} targetingMetrics={targetingMetrics} />
+                )}
               </section>
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
