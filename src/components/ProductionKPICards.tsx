@@ -261,31 +261,6 @@ export function ProductionKPICards({ data, columns }: ProductionKPICardsProps) {
         />
       </div>
 
-      {/* ── Row 4: Side-by-side breakdowns ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <BreakdownPanel
-          title="Ownership Type"
-          entries={sortedOwnership}
-          total={m.totalCompanies}
-          colorFn={(i) => ['bg-chart-teal', 'bg-chart-purple', 'bg-chart-amber', 'bg-chart-rose'][i % 4]}
-        />
-        <BreakdownPanel
-          title="Geographic Distribution"
-          entries={sortedStates.slice(0, 10)}
-          total={m.totalCompanies}
-          colorFn={(i) => {
-            const hue = 210 + i * 15;
-            return '';
-          }}
-          barStyleFn={(i) => ({ background: `hsl(${210 + i * 15} 65% ${55 - i * 2}%)` })}
-        />
-        <BreakdownPanel
-          title="Specialty / Focus"
-          entries={Object.entries(m.focusBreakdown).sort((a, b) => b[1] - a[1]).slice(0, 10)}
-          total={m.totalCompanies}
-          colorFn={(i) => ['bg-chart-amber', 'bg-chart-rose', 'bg-chart-purple', 'bg-chart-teal'][i % 4]}
-        />
-      </div>
     </div>
   );
 }
