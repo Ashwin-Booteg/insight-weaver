@@ -12,6 +12,8 @@ import { DataTable } from '@/components/DataTable';
 import { ProductionCompanyTable } from '@/components/ProductionCompanyTable';
 import { ProductionAcquisitionDashboard } from '@/components/ProductionAcquisitionDashboard';
 import { UnionAcquisitionDashboard } from '@/components/UnionAcquisitionDashboard';
+import { UnionDirectoryTable } from '@/components/UnionDirectoryTable';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FilteredStateTable, RoleSummaryTable } from '@/components/FilteredStateTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
@@ -289,7 +291,15 @@ const SectorPage: React.FC<SectorPageProps> = ({
         </div>
       </header>
 
-      {!hasData ? (
+      {!hasData && isSyncing ? (
+        <div className="flex-1 p-8 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          </div>
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-48 rounded-xl" />
+        </div>
+      ) : !hasData ? (
         <div className="flex-1 flex items-center justify-center p-8 dot-grid">
           <div className="text-center max-w-sm animate-fade-in">
             <div className={cn("w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-6",
@@ -370,7 +380,7 @@ const SectorPage: React.FC<SectorPageProps> = ({
                       <div className="w-1 h-4 rounded-full bg-amber-500" />
                       <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Union Directory</h2>
                     </div>
-                    <DataTable data={filteredData} columns={activeDataset.columns} />
+                    <UnionDirectoryTable data={filteredData} columns={activeDataset.columns} />
                   </section>
 
                   <section>
