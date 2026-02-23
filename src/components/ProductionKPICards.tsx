@@ -37,18 +37,23 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
   const industries: Record<string, number> = {};
 
   for (const row of data) {
-    const own = (row['Ownership'] as string) || 'Unknown';
+    // Support both "Ownership" and "Company Type" columns
+    const own = (row['Ownership'] as string) || (row['Company Type'] as string) || 'Unknown';
     ownership[own] = (ownership[own] || 0) + 1;
 
-    const sz = (row['Size bracket'] as string) || 'Unknown';
-    size[sz] = (size[sz] || 0) + 1;
+    // Support both "Size bracket" and "Company Type" for size
+    const sz = (row['Size bracket'] as string) || '';
+    if (sz) size[sz] = (size[sz] || 0) + 1;
 
-    const foc = (row['Focus'] as string) || 'Unknown';
-    focus[foc] = (focus[foc] || 0) + 1;
+    // Support "Focus" and "Specialty" columns
+    const foc = (row['Focus'] as string) || (row['Specialty'] as string) || '';
+    if (foc) focus[foc] = (focus[foc] || 0) + 1;
 
+    // Support "HQ State" and "State" columns
     const st = (row['HQ State'] as string) || (row['State'] as string) || '';
     if (st) states[st] = (states[st] || 0) + 1;
 
+    // Support "HQ City" and "City" columns
     const city = (row['HQ City'] as string) || (row['City'] as string) || '';
     if (city) cities[city] = (cities[city] || 0) + 1;
 
@@ -71,10 +76,10 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
     topCity: sortedCities[0] ? { name: sortedCities[0][0], count: sortedCities[0][1] } : null,
     uniqueStates: Object.keys(states).length,
     uniqueCities: Object.keys(cities).length,
-    publicCount: (ownership['Public'] || 0),
+    publicCount: (ownership['Public'] || 0) + (ownership['Co-op'] || 0),
     privateCount: (ownership['Private'] || 0),
-    majorCount: (size['Major'] || 0) + (size['Major/Studio'] || 0),
-    indieCount: (size['Indie/Notable'] || 0),
+    majorCount: (size['Major'] || 0) + (size['Major/Studio'] || 0) + (ownership['Major Studio'] || 0) + (ownership['Major Label'] || 0) + (ownership['Major Network'] || 0),
+    indieCount: (size['Indie/Notable'] || 0) + (ownership['Independent'] || 0),
   };
 }
 
