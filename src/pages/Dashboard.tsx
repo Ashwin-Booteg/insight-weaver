@@ -214,6 +214,10 @@ const Dashboard = () => {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${location.pathname === '/' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>
               <LayoutGrid className="w-3.5 h-3.5" /> All Data
             </button>
+            <button onClick={() => navigate('/talent-users')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+              Talent
+            </button>
             <button onClick={() => navigate('/production-companies')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
               Production

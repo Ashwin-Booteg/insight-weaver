@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 
 interface SectorPageProps {
-  sector: 'production_companies' | 'unions';
+  sector: 'production_companies' | 'unions' | 'talent_users';
   sectorLabel: string;
   sectorColor: string;
   sectorGradient: string;
@@ -156,6 +156,9 @@ const SectorPage: React.FC<SectorPageProps> = ({
 
   const EmptyIcon = emptyIcon === 'factory' ? Factory : Users;
   const isProduction = sector === 'production_companies';
+  const isTalent = sector === 'talent_users';
+  // Color helper: production=blue, talent=teal, unions=amber
+  const sectorTheme = isProduction ? 'blue' : isTalent ? 'teal' : 'amber';
 
   if (authLoading) {
     return (
@@ -173,12 +176,14 @@ const SectorPage: React.FC<SectorPageProps> = ({
       <header className="glass border-b border-border px-5 py-3 shrink-0 sticky top-0 z-20">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className={cn("w-8 h-8 rounded-xl border flex items-center justify-center shrink-0",
-              isProduction ? "bg-blue-500/10 border-blue-500/20" : "bg-amber-500/10 border-amber-500/20"
+          <div className={cn("w-8 h-8 rounded-xl border flex items-center justify-center shrink-0",
+              isProduction ? "bg-blue-500/10 border-blue-500/20" : isTalent ? "bg-teal-500/10 border-teal-500/20" : "bg-amber-500/10 border-amber-500/20"
             )}>
               {isProduction
                 ? <Factory className="w-4 h-4 text-blue-500" />
-                : <Users className="w-4 h-4 text-amber-500" />
+                : isTalent
+                  ? <Users className="w-4 h-4 text-teal-500" />
+                  : <Users className="w-4 h-4 text-amber-500" />
               }
             </div>
             <div>
@@ -199,6 +204,7 @@ const SectorPage: React.FC<SectorPageProps> = ({
 
           {/* Nav links */}
           <nav className="hidden sm:flex items-center gap-1">
+            <NavPill href="/talent-users" label="Talent" icon={<Users className="w-3.5 h-3.5" />} active={location.pathname === '/talent-users'} />
             <NavPill href="/production-companies" label="Production" icon={<Factory className="w-3.5 h-3.5" />} active={location.pathname === '/production-companies'} />
             <NavPill href="/unions" label="Unions" icon={<Users className="w-3.5 h-3.5" />} active={location.pathname === '/unions'} />
           </nav>
@@ -208,10 +214,10 @@ const SectorPage: React.FC<SectorPageProps> = ({
 
             <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className={cn("h-8 gap-1.5 rounded-lg text-xs font-medium shadow-lg",
-                  isProduction
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20"
-                    : "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20"
+                <Button size="sm" className={cn("h-8 gap-1.5 rounded-lg text-xs font-medium shadow-lg text-white",
+                  sectorTheme === 'blue' ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20" :
+                  sectorTheme === 'teal' ? "bg-teal-600 hover:bg-teal-700 shadow-teal-600/20" :
+                  "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
                 )}>
                   <Plus className="w-3.5 h-3.5" /> Add Data
                 </Button>
@@ -282,15 +288,17 @@ const SectorPage: React.FC<SectorPageProps> = ({
         <div className="flex-1 flex items-center justify-center p-8 dot-grid">
           <div className="text-center max-w-sm animate-fade-in">
             <div className={cn("w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-6",
-              isProduction ? "bg-blue-500/10 border-blue-500/20" : "bg-amber-500/10 border-amber-500/20"
+              sectorTheme === 'blue' ? "bg-blue-500/10 border-blue-500/20" : sectorTheme === 'teal' ? "bg-teal-500/10 border-teal-500/20" : "bg-amber-500/10 border-amber-500/20"
             )}>
-              <EmptyIcon className={cn("w-7 h-7", isProduction ? "text-blue-500" : "text-amber-500")} />
+              <EmptyIcon className={cn("w-7 h-7", sectorTheme === 'blue' ? "text-blue-500" : sectorTheme === 'teal' ? "text-teal-500" : "text-amber-500")} />
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">{emptyTitle}</h2>
             <p className="text-sm text-muted-foreground mb-8 leading-relaxed">{emptyDescription}</p>
             <Button onClick={() => setUploadDialogOpen(true)}
               className={cn("gap-2 rounded-xl px-6 h-10 shadow-lg text-sm font-medium",
-                isProduction ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20" : "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                sectorTheme === 'blue' ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20" :
+                sectorTheme === 'teal' ? "bg-teal-600 hover:bg-teal-700 shadow-teal-600/20" :
+                "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
               )}>
               <Upload className="w-4 h-4" /> Upload {sectorLabel} Data
             </Button>
@@ -314,7 +322,7 @@ const SectorPage: React.FC<SectorPageProps> = ({
             <div className="dashboard-main">
               <section className="mb-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className={cn("w-1 h-4 rounded-full", isProduction ? "bg-blue-500" : "bg-amber-500")} />
+                  <div className={cn("w-1 h-4 rounded-full", sectorTheme === 'blue' ? "bg-blue-500" : sectorTheme === 'teal' ? "bg-teal-500" : "bg-amber-500")} />
                   <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Metrics</h2>
                 </div>
                 <ExtendedKPICards data={extendedKPIs} profile={profile} targetingMetrics={targetingMetrics} />
