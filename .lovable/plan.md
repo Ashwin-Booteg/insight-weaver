@@ -1,87 +1,73 @@
 
-# Unified Multi-Dataset Backend — Append All Excels Into One View
 
-## What The User Is Asking For
+# Three-Section Industry Classification: Production Companies, Unions, and Guilds
 
-Right now, each Excel file you upload is stored separately in the backend. You can only view **one file at a time** — you have to switch between them manually. The user wants all uploaded Excel files to be **combined into a single unified dataset** so the dashboard shows data from every file at once, with full filtering and map support.
-
----
-
-## Current State (Problems to Fix)
-
-1. **One dataset at a time**: The dashboard shows only the "active" dataset. Switching loses context of other files.
-2. **Row limit of 1,000**: When loading from the backend, only 1,000 rows are fetched per dataset — larger files get cut off.
-3. **Duplicate datasets**: The database currently has many duplicates from previous uploads of the same file (multiple copies of the Europe and US files).
-4. **No merge logic**: There's no concept of combining datasets that share the same column structure (e.g., two Excel files with the same role columns but different countries).
+## Overview
+Restructure the dashboard to display data across three distinct organizational sections -- **Production Companies**, **Unions**, and **Guilds & Associations** -- each with its own KPI cards, charts, and breakdowns. Roles will be auto-classified using keyword matching.
 
 ---
 
-## What Will Be Built
+## Section Breakdown
 
-### 1. Backend — Smarter Data Loading
-- Remove the 1,000-row limit when fetching dataset rows from the backend, using pagination to load all rows correctly.
-- Add a **"Source Dataset"** tag to each row in the combined view (so you know which file each row came from).
+### 1. Production Companies
+The existing three sub-categories stay:
+- Movie & Entertainment
+- Music & Audio
+- Fashion & Apparel
 
-### 2. Combined Dataset View — "Merge All Compatible"
-- Add a **"Merge All"** toggle/button in the dataset manager dialog.
-- When enabled, all datasets that share the same column structure get merged into one unified view in the dashboard.
-- The system checks if column names match before merging (compatible = same role/location columns).
-- Each merged row is tagged with its source filename.
+### 2. Unions
+Labor unions and trade organizations representing workers:
+- Keywords: `Union`, `Local`, `IATSE`, `Teamster`, `Stagehand`, `Grip`, `Electrician`, `Carpenter`, `Prop`, `Scenic`, `Paint`, `Rigger`, `Loader`
 
-### 3. Dataset Manager UI — Enhanced Dialog
-- The current "Upload Dataset" dialog becomes a full **Dataset Manager**:
-  - Shows all uploaded files with row counts and upload dates.
-  - "Active" badge on the currently selected dataset.
-  - **Merge All** button that combines compatible datasets.
-  - **Delete** button per file.
-  - Upload zone for new files.
-- A clear indicator in the header showing: "3 files merged · 122 rows total".
+### 3. Guilds & Associations
+Professional guilds and membership associations:
+- Keywords: `Guild`, `SAG`, `AFTRA`, `DGA`, `WGA`, `PGA`, `Academy`, `Society`, `Association`, `Member`, `Fellow`, `Chapter`, `Council`
 
-### 4. Dashboard Updates
-- The header now shows **merged dataset info** when multiple files are combined.
-- KPI cards, maps, and charts all reflect the merged data automatically.
-- The filter bar shows all countries/locations from all merged files.
-
-### 5. Fix the Row Limit
-- Replace the `limit(1000)` query with paginated loading: fetch rows in batches of 1,000 until all are loaded.
-- This ensures large files (e.g., 10,000+ rows) are fully visible.
+Roles not matching Union or Guild keywords fall into Production Companies (current default behavior).
 
 ---
 
-## Technical Details
+## Changes
 
-### Files to Change
+### A. Type System (`src/types/filters.ts`)
+- Add a new top-level type `OrgSector = 'Production Companies' | 'Unions' | 'Guilds & Associations'`
+- Add `SECTOR_KEYWORDS` dictionary with keywords for Unions and Guilds (Production remains the default)
+- Add `classifyRoleSector(roleName)` function
+- Extend `RoleMetadata` with a `sector: OrgSector` field
+- Extend `ExtendedKPIData` with `sectorBreakdown: Record<OrgSector, number>`
+- Extend `GlobalFilterState` with `selectedSectors: OrgSector[]`
 
-```text
-src/hooks/useCloudDataset.ts     — Remove row limit, add merge logic, paginated fetch
-src/pages/Dashboard.tsx          — Update header to show merged state, pass merged data
-src/components/FileUpload.tsx    — Enhance UploadHistoryList with merge toggle + active state
-```
+### B. Filter Hook (`src/hooks/useGlobalFilters.ts`)
+- Compute `rolesBySector` grouping (similar to existing `rolesByIndustry`)
+- Add `sectorBreakdown` to `extendedKPIs` computation
+- Add `setSectors` filter action
+- When sectors are selected, filter `effectiveSelectedRoles` to only roles in those sectors
 
-### Merge Logic
-When the user clicks "Merge All":
-- All datasets in their account are fetched from the backend.
-- The system checks which ones share a common set of column names (intersection of role columns).
-- Compatible datasets are merged by concatenating their rows.
-- A `_source_file` field is added to each row for traceability.
-- The merged result is used as the active data source for all dashboard components.
+### C. New Component: `SectorDashboardSections.tsx`
+A component rendering 3 collapsible/tabbed sections, each containing:
+- A section header with icon, sector name, total people count, and role count
+- A mini KPI row (total people, top role, top location, industry split for Production)
+- A horizontal bar chart of top 10 roles in that sector
+- A region breakdown bar for that sector's data
 
-### Pagination Fix
-```
-Current:  .limit(1000)   ← truncates large files
-Fixed:    fetch in batches of 1000, loop until no more rows returned
-```
+### D. Dashboard Integration (`src/pages/Dashboard.tsx`)
+- Add `SectorDashboardSections` between the KPI cards and the Tabs
+- Pass filtered data, role metadata, and KPIs per sector
+- Add sector filter chips to the `GlobalFilterBar`
 
-### No Database Schema Changes Needed
-All data is already stored correctly in `datasets` and `dataset_rows` tables. This is purely a frontend data-loading and merging change.
+### E. Filter Bar Update (`src/components/filters/GlobalFilterBar.tsx`)
+- Add a "Sector" filter section with 3 checkboxes (Production Companies, Unions, Guilds & Associations)
+- Selecting a sector filters roles/KPIs to only that sector's roles
+
+### F. Analytics Type Update (`src/types/analytics.ts`)
+- Add `SECTOR_CATEGORIES` constant for the 3 sectors
 
 ---
 
-## What You'll See After
+## Technical Notes
 
-- Upload the European Excel → it appears in the dataset manager.
-- Click "Merge All" → the dashboard immediately shows all rows from all compatible files combined.
-- The world map shows every country from every file.
-- KPI cards show totals across all files.
-- The header reads: e.g., "2 files merged · 72 rows · World".
-- Individual files can still be viewed solo by clicking them in the manager.
+- The keyword-based classification runs in the same `classifyRoleSector()` pattern as the existing `classifyRoleIndustry()` -- it checks Union keywords first, then Guild keywords, then defaults to Production Companies.
+- For Production Company roles, the existing industry sub-classification (Movie/Music/Fashion) still applies and is shown as a nested breakdown within the Production section.
+- All existing charts, maps, and tables continue to work unchanged -- the new sections are additive.
+- No database changes required; classification is computed client-side from column names.
+
