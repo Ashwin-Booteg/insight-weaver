@@ -70,50 +70,45 @@ function computeMetrics(data: Record<string, unknown>[]): CompanyMetrics {
     let ind = '';
 
     if (hasEmptyKeys) {
-      // Determine if this is a directory row (company listing) or summary row
       const emptyVal = String(row['__EMPTY'] || '');
       const empty3Val = String(row['__EMPTY_3'] || '');
+      // Try all possible state column keys
       const stateVal = String(row[stateColKey] || row[dirColKey] || '');
 
       // Skip header rows
       if (stateVal === 'State' || emptyVal === 'Movie Companies' || emptyVal === 'Company Name' || emptyVal === 'Movie Unions') continue;
       // Skip summary/total rows
       if (stateVal.toUpperCase().includes('TOTAL') || stateVal.toUpperCase().includes('GRAND')) continue;
+      // Skip empty rows
+      if (!stateVal || !emptyVal) continue;
 
-      // Check if it's a directory row: __EMPTY_3 contains type like "Major Studio", "Independent", "Streaming"
-      const isDirectory = empty3Val && (
-        empty3Val.includes('Studio') || empty3Val.includes('Independent') || empty3Val.includes('Streaming') ||
-        empty3Val.includes('Major') || empty3Val.includes('Indie') || empty3Val.includes('Label') ||
-        empty3Val.includes('Network') || empty3Val.includes('Brand') || empty3Val.includes('House') ||
-        empty3Val.includes('Agency') || empty3Val.includes('Publisher') || empty3Val.includes('Co-op') ||
-        empty3Val.includes('Conglomerate') || empty3Val.includes('Platform')
-      );
+      // Directory row = __EMPTY is a company name (not a number)
+      // Summary row = __EMPTY is a count like "15", "10", etc.
+      const isNumeric = emptyVal !== '' && !isNaN(Number(emptyVal)) && emptyVal.trim().length < 6;
+      if (isNumeric) continue; // Skip summary/count rows
 
-      if (isDirectory) {
-        st = stateVal;
-        city = String(row['__EMPTY_1'] || '');
-        foc = String(row['__EMPTY_2'] || '');
-        own = empty3Val;
-        // Classify industry from focus/specialty
-        const focLower = foc.toLowerCase();
-        if (focLower.includes('film') || focLower.includes('tv') || focLower.includes('animation') || focLower.includes('vfx') || focLower.includes('post-prod')) {
-          ind = 'Film/TV';
-        } else if (focLower.includes('music') || focLower.includes('record') || focLower.includes('audio') || focLower.includes('sound') || focLower.includes('publishing')) {
-          ind = 'Music';
-        } else if (focLower.includes('fashion') || focLower.includes('apparel') || focLower.includes('luxury') || focLower.includes('retail') || focLower.includes('textile') || focLower.includes('footwear') || focLower.includes('design') || focLower.includes('cosmetic') || focLower.includes('beauty')) {
-          ind = 'Fashion';
-        } else {
-          ind = 'Other';
-        }
-        // Map ownership to simplified categories
-        if (own.includes('Major')) sz = 'Major';
-        else if (own.includes('Independent') || own.includes('Indie')) sz = 'Indie/Notable';
-        else if (own.includes('Streaming')) sz = 'Streaming';
-        else sz = own;
+      // This is a company directory row
+      st = stateVal;
+      city = String(row['__EMPTY_1'] || '');
+      foc = String(row['__EMPTY_2'] || '');
+      own = empty3Val || 'Unknown';
+      // Classify industry from focus/specialty
+      const focLower = foc.toLowerCase();
+      if (focLower.includes('film') || focLower.includes('tv') || focLower.includes('animation') || focLower.includes('vfx') || focLower.includes('post-prod') || focLower.includes('production') || focLower.includes('cinema')) {
+        ind = 'Film/TV';
+      } else if (focLower.includes('music') || focLower.includes('record') || focLower.includes('audio') || focLower.includes('sound') || focLower.includes('publishing') || focLower.includes('hip-hop') || focLower.includes('jazz') || focLower.includes('country') || focLower.includes('latin')) {
+        ind = 'Music';
+      } else if (focLower.includes('fashion') || focLower.includes('apparel') || focLower.includes('luxury') || focLower.includes('retail') || focLower.includes('textile') || focLower.includes('footwear') || focLower.includes('design') || focLower.includes('cosmetic') || focLower.includes('beauty') || focLower.includes('clothing') || focLower.includes('jewelry') || focLower.includes('accessories')) {
+        ind = 'Fashion';
       } else {
-        // Summary row — skip for company-level metrics
-        continue;
+        ind = foc || 'Other';
       }
+      // Map ownership to simplified categories
+      const ownLower = own.toLowerCase();
+      if (ownLower.includes('major')) sz = 'Major';
+      else if (ownLower.includes('independent') || ownLower.includes('indie')) sz = 'Indie/Notable';
+      else if (ownLower.includes('streaming')) sz = 'Streaming';
+      else sz = own;
     } else {
       // Named columns (starter dataset)
       own = (row['Ownership'] as string) || (row['Company Type'] as string) || 'Unknown';
