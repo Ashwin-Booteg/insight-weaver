@@ -8,6 +8,19 @@ export const US_REGIONS = GEOGRAPHY_PROFILES.US.regions;
 
 export type RegionName = string; // Dynamic based on detected geography
 export type IndustryCategory = 'Movie & Entertainment' | 'Music & Audio' | 'Fashion & Apparel';
+export type OrgSector = 'Production Companies' | 'Unions' | 'Guilds & Associations';
+
+// Sector classification keywords
+export const SECTOR_KEYWORDS: Record<Exclude<OrgSector, 'Production Companies'>, string[]> = {
+  'Unions': [
+    'Union', 'Local', 'IATSE', 'Teamster', 'Stagehand', 'Grip', 'Electrician',
+    'Carpenter', 'Prop', 'Scenic', 'Paint', 'Rigger', 'Loader'
+  ],
+  'Guilds & Associations': [
+    'Guild', 'SAG', 'AFTRA', 'DGA', 'WGA', 'PGA', 'Academy', 'Society',
+    'Association', 'Member', 'Fellow', 'Chapter', 'Council'
+  ]
+};
 
 // Industry classification keywords
 export const INDUSTRY_KEYWORDS = {
@@ -30,6 +43,7 @@ export interface GlobalFilterState {
   regions: string[];
   selectedRoles: string[];
   selectedIndustries: IndustryCategory[];
+  selectedSectors: OrgSector[];
   industryFilterMode: 'AND' | 'OR';
   searchText: string;
   dateRange: { start: Date | null; end: Date | null };
@@ -39,6 +53,7 @@ export interface GlobalFilterState {
 export interface RoleMetadata {
   columnName: string;
   industry: IndustryCategory;
+  sector: OrgSector;
   totalPeople: number;
   percentOfTotal: number;
 }
@@ -66,6 +81,7 @@ export interface ExtendedKPIData {
   roleCoverage: number;
   roleBreakdown: Record<string, number>;
   industryBreakdown: Record<IndustryCategory, number>;
+  sectorBreakdown: Record<OrgSector, number>;
   regionBreakdown: Record<string, number>;
   stateBreakdown: Record<string, number>;
 }
@@ -103,6 +119,25 @@ export function getStatesFromRegions(regions: string[], profile?: GeographyProfi
   return geoGetLocationsFromRegions(regions, p);
 }
 
+// Helper function to classify role into sector
+export function classifyRoleSector(roleName: string): OrgSector {
+  const lowerRole = roleName.toLowerCase();
+  
+  for (const keyword of SECTOR_KEYWORDS['Unions']) {
+    if (lowerRole.includes(keyword.toLowerCase())) {
+      return 'Unions';
+    }
+  }
+  
+  for (const keyword of SECTOR_KEYWORDS['Guilds & Associations']) {
+    if (lowerRole.includes(keyword.toLowerCase())) {
+      return 'Guilds & Associations';
+    }
+  }
+  
+  return 'Production Companies';
+}
+
 // Helper function to classify role into industry
 export function classifyRoleIndustry(roleName: string): IndustryCategory {
   const lowerRole = roleName.toLowerCase();
@@ -128,6 +163,7 @@ export const initialGlobalFilterState: GlobalFilterState = {
   regions: [],
   selectedRoles: [],
   selectedIndustries: [],
+  selectedSectors: [],
   industryFilterMode: 'AND',
   searchText: '',
   dateRange: { start: null, end: null }

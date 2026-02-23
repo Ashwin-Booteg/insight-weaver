@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, MapPin, Globe2, Briefcase, Factory, Filter, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, X, MapPin, Globe2, Briefcase, Factory, Filter, ChevronDown, ToggleLeft, ToggleRight, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { GlobalFilterState, IndustryCategory, RoleMetadata } from '@/types/filters';
+import { GlobalFilterState, IndustryCategory, OrgSector, RoleMetadata } from '@/types/filters';
 import { GeographyProfile, getLocationName } from '@/types/geography';
 
 interface GlobalFilterBarProps {
@@ -16,6 +16,7 @@ interface GlobalFilterBarProps {
   availableStates: string[];
   roleMetadata: RoleMetadata[];
   rolesByIndustry: Record<IndustryCategory, string[]>;
+  rolesBySector: Record<OrgSector, string[]>;
   top20Roles: string[];
   effectiveSelectedStates: string[];
   effectiveSelectedRoles: string[];
@@ -24,6 +25,7 @@ interface GlobalFilterBarProps {
   onRolesChange: (roles: string[]) => void;
   onIndustriesChange: (industries: IndustryCategory[]) => void;
   onIndustryModeChange: (mode: 'AND' | 'OR') => void;
+  onSectorsChange: (sectors: OrgSector[]) => void;
   onSelectTop20Roles: () => void;
   onSelectAllStates: () => void;
   onClearAll: () => void;
@@ -31,15 +33,16 @@ interface GlobalFilterBarProps {
 }
 
 export function GlobalFilterBar({
-  filters, availableStates, roleMetadata, rolesByIndustry, top20Roles,
+  filters, availableStates, roleMetadata, rolesByIndustry, rolesBySector, top20Roles,
   effectiveSelectedStates, effectiveSelectedRoles,
   onStatesChange, onRegionsChange, onRolesChange, onIndustriesChange,
-  onIndustryModeChange, onSelectTop20Roles, onSelectAllStates, onClearAll,
+  onIndustryModeChange, onSectorsChange, onSelectTop20Roles, onSelectAllStates, onClearAll,
   profile
 }: GlobalFilterBarProps) {
   const hasActiveFilters = 
     filters.states.length > 0 || filters.regions.length > 0 || 
-    filters.selectedRoles.length > 0 || filters.selectedIndustries.length > 0;
+    filters.selectedRoles.length > 0 || filters.selectedIndustries.length > 0 ||
+    filters.selectedSectors.length > 0;
 
   const regionNames = useMemo(() => profile ? Object.keys(profile.regions) : [], [profile]);
   const locationLabel = profile?.locationLabel || 'States';
@@ -56,6 +59,7 @@ export function GlobalFilterBar({
         <LocationFilterPopover selectedStates={filters.states} availableStates={availableStates} onChange={onStatesChange} onSelectAll={onSelectAllStates} profile={profile} />
         <div className="w-px h-4 bg-border mx-0.5" />
         <IndustryFilterPopover selectedIndustries={filters.selectedIndustries} rolesByIndustry={rolesByIndustry} industryMode={filters.industryFilterMode} onChange={onIndustriesChange} onModeChange={onIndustryModeChange} />
+        <SectorFilterPopover selectedSectors={filters.selectedSectors} rolesBySector={rolesBySector} onChange={onSectorsChange} />
         <RoleFilterPopover selectedRoles={filters.selectedRoles} roleMetadata={roleMetadata} top20Roles={top20Roles} onChange={onRolesChange} onSelectTop20={onSelectTop20Roles} />
 
         {hasActiveFilters && (
@@ -85,6 +89,12 @@ export function GlobalFilterBar({
             {filters.selectedRoles.length > 0 && (
               <Badge variant="outline" className="text-[11px] h-6 rounded-lg"><Briefcase className="w-2.5 h-2.5 mr-1" />{filters.selectedRoles.length} roles</Badge>
             )}
+            {filters.selectedSectors.map(sec => (
+              <Badge key={sec} variant="outline" className="gap-1 text-[11px] h-6 rounded-lg border-accent/40 text-accent-foreground">
+                {sec}
+                <button onClick={() => onSectorsChange(filters.selectedSectors.filter(s => s !== sec))} className="ml-0.5 hover:text-destructive"><X className="w-2.5 h-2.5" /></button>
+              </Badge>
+            ))}
             <button onClick={onClearAll} className="text-[11px] text-destructive/70 hover:text-destructive transition-colors ml-1">Clear all</button>
           </>
         )}
@@ -346,6 +356,63 @@ function RoleFilterPopover({
             ))}
           </div>
         </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Sector Filter Popover
+function SectorFilterPopover({
+  selectedSectors, rolesBySector, onChange
+}: {
+  selectedSectors: OrgSector[];
+  rolesBySector: Record<OrgSector, string[]>;
+  onChange: (sectors: OrgSector[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const allSectors: OrgSector[] = ['Production Companies', 'Unions', 'Guilds & Associations'];
+  const sectorIcons: Record<OrgSector, string> = {
+    'Production Companies': '🏭', 'Unions': '🤝', 'Guilds & Associations': '🏅'
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1">
+          <Shield className="w-4 h-4" /> Sector
+          {selectedSectors.length > 0 && (
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{selectedSectors.length}</Badge>
+          )}
+          <ChevronDown className="w-3 h-3 ml-1" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="start">
+        <div className="p-3 border-b">
+          <p className="text-sm font-medium">Filter by Sector</p>
+          <p className="text-xs text-muted-foreground">Organizational classification</p>
+        </div>
+        <div className="p-2 space-y-1">
+          {allSectors.map(sector => (
+            <label key={sector} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted/50">
+              <Checkbox
+                checked={selectedSectors.includes(sector)}
+                onCheckedChange={(checked) => {
+                  if (checked) onChange([...selectedSectors, sector]);
+                  else onChange(selectedSectors.filter(s => s !== sector));
+                }}
+              />
+              <span className="text-lg">{sectorIcons[sector]}</span>
+              <div className="flex-1">
+                <span className="text-sm font-medium">{sector}</span>
+                <p className="text-xs text-muted-foreground">{rolesBySector[sector].length} roles</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <div className="p-2 border-t flex gap-2">
+          <Button variant="ghost" size="sm" className="flex-1" onClick={() => onChange(allSectors)}>All</Button>
+          <Button variant="ghost" size="sm" className="flex-1" onClick={() => onChange([])}>Clear</Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

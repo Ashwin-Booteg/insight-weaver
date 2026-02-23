@@ -12,6 +12,7 @@ import { FilteredStateTable, RoleSummaryTable } from '@/components/FilteredState
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
 import { FilterAwareAIInsights } from '@/components/FilterAwareAIInsights';
+import { SectorDashboardSections } from '@/components/SectorDashboardSections';
 import {
   TopStatesChart, BottomStatesChart, RegionIndustryStackedChart,
   IndustryDonutChart, TopRolesChart, ParetoChart,
@@ -25,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, Session } from '@supabase/supabase-js';
 import { Badge } from '@/components/ui/badge';
 import { StateMetric } from '@/types/analytics';
-import { IndustryCategory } from '@/types/filters';
+import { IndustryCategory, OrgSector } from '@/types/filters';
 import { getLocationName } from '@/types/geography';
 import {
   Dialog,
@@ -59,9 +60,9 @@ const Dashboard = () => {
   const {
     filters: globalFilters, profile, regionNames,
     setStates, setRegions, setSelectedRoles, setSelectedIndustries,
-    setIndustryFilterMode, selectTop20Roles, selectAllStates, clearAllFilters,
+    setIndustryFilterMode, setSelectedSectors, selectTop20Roles, selectAllStates, clearAllFilters,
     effectiveSelectedStates, effectiveSelectedRoles,
-    availableStates, roleMetadata, rolesByIndustry, top20Roles,
+    availableStates, roleMetadata, rolesByIndustry, rolesBySector, top20Roles,
     filteredData, extendedKPIs, stateSummaries,
     regionIndustryData, paretoData, roleRegionData
   } = useGlobalFilters({
@@ -309,11 +310,13 @@ const Dashboard = () => {
           <GlobalFilterBar
             filters={globalFilters} availableStates={availableStates}
             roleMetadata={roleMetadata} rolesByIndustry={rolesByIndustry}
+            rolesBySector={rolesBySector}
             top20Roles={top20Roles} effectiveSelectedStates={effectiveSelectedStates}
             effectiveSelectedRoles={effectiveSelectedRoles}
             onStatesChange={setStates} onRegionsChange={setRegions}
             onRolesChange={setSelectedRoles} onIndustriesChange={setSelectedIndustries}
             onIndustryModeChange={setIndustryFilterMode}
+            onSectorsChange={setSelectedSectors}
             onSelectTop20Roles={selectTop20Roles} onSelectAllStates={selectAllStates}
             onClearAll={clearAllFilters} profile={profile}
           />
@@ -328,6 +331,16 @@ const Dashboard = () => {
                 </div>
                 <ExtendedKPICards data={extendedKPIs} profile={profile} targetingMetrics={targetingMetrics} />
               </section>
+
+              {/* Sector Breakdown */}
+              <SectorDashboardSections
+                roleMetadata={roleMetadata}
+                filteredData={filteredData}
+                columns={activeDataset.columns}
+                effectiveSelectedRoles={effectiveSelectedRoles}
+                profile={profile}
+                extendedKPIs={extendedKPIs}
+              />
               
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
                 <div className="flex items-center justify-between gap-4 mb-5">
