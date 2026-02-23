@@ -9,6 +9,7 @@ import { ProductionKPICards } from '@/components/ProductionKPICards';
 import { GeoMap, MetricSelector } from '@/components/GeoMap';
 import { GlobalFilterBar } from '@/components/filters/GlobalFilterBar';
 import { DataTable } from '@/components/DataTable';
+import { ProductionCompanyTable } from '@/components/ProductionCompanyTable';
 import { FilteredStateTable, RoleSummaryTable } from '@/components/FilteredStateTable';
 import { ICPConfigDialog } from '@/components/ICPConfigDialog';
 import { StateDrilldown } from '@/components/StateDrilldown';
@@ -352,13 +353,17 @@ const SectorPage: React.FC<SectorPageProps> = ({
                     <TopStatesChart kpiData={extendedKPIs} onStateClick={handleChartStateClick} activeFilters={activeFilterLabels} profile={profile} />
                     <IndustryDonutChart data={extendedKPIs.industryBreakdown} onIndustryClick={handleChartIndustryClick} activeFilters={activeFilterLabels} />
                   </div>
-                  <SunburstChart stateBreakdown={extendedKPIs.stateBreakdown} roleBreakdown={extendedKPIs.roleBreakdown}
-                    onRegionFilter={handleChartRegionClick} onStateFilter={handleChartStateClick} profile={profile} />
+                  {!isProduction && (
+                    <SunburstChart stateBreakdown={extendedKPIs.stateBreakdown} roleBreakdown={extendedKPIs.roleBreakdown}
+                      onRegionFilter={handleChartRegionClick} onStateFilter={handleChartStateClick} profile={profile} />
+                  )}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <RegionIndustryStackedChart data={regionIndustryData} onRegionClick={handleChartRegionClick} activeFilters={activeFilterLabels} />
                     <RegionIndustryHeatmap data={regionIndustryData} onRegionClick={handleChartRegionClick} onIndustryClick={handleChartIndustryClick} activeFilters={activeFilterLabels} />
                   </div>
-                  <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
+                  {!isProduction && (
+                    <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
+                  )}
                 </TabsContent>
 
                 <TabsContent value="charts" className="mt-0 space-y-6">
@@ -370,11 +375,15 @@ const SectorPage: React.FC<SectorPageProps> = ({
                     <RegionIndustryStackedChart data={regionIndustryData} onRegionClick={handleChartRegionClick} activeFilters={activeFilterLabels} />
                     <IndustryDonutChart data={extendedKPIs.industryBreakdown} onIndustryClick={handleChartIndustryClick} activeFilters={activeFilterLabels} />
                   </div>
-                  <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
-                  <ParetoChart data={paretoData} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
-                  <SunburstChart stateBreakdown={extendedKPIs.stateBreakdown} roleBreakdown={extendedKPIs.roleBreakdown}
-                    onRegionFilter={handleChartRegionClick} onStateFilter={handleChartStateClick} profile={profile} />
-                  <RoleRegionStackedChart data={roleRegionData} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} profile={profile} />
+                  {!isProduction && (
+                    <>
+                      <TopRolesChart roleBreakdown={extendedKPIs.roleBreakdown} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
+                      <ParetoChart data={paretoData} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} />
+                      <SunburstChart stateBreakdown={extendedKPIs.stateBreakdown} roleBreakdown={extendedKPIs.roleBreakdown}
+                        onRegionFilter={handleChartRegionClick} onStateFilter={handleChartStateClick} profile={profile} />
+                      <RoleRegionStackedChart data={roleRegionData} onRoleClick={handleChartRoleClick} activeFilters={activeFilterLabels} profile={profile} />
+                    </>
+                  )}
                 </TabsContent>
 
                 {profile.mapType !== 'none' && (
@@ -411,9 +420,15 @@ const SectorPage: React.FC<SectorPageProps> = ({
                 )}
 
                 <TabsContent value="tables" className="mt-0 space-y-6">
-                  <FilteredStateTable stateSummaries={stateSummaries} roleMetadata={roleMetadata}
-                    totalPeople={extendedKPIs.totalPeople} onStateClick={handleStateClick} profile={profile} />
-                  <RoleSummaryTable roleMetadata={roleMetadata} roleBreakdown={extendedKPIs.roleBreakdown} />
+                  {isProduction ? (
+                    <ProductionCompanyTable data={filteredData} columns={activeDataset.columns} />
+                  ) : (
+                    <>
+                      <FilteredStateTable stateSummaries={stateSummaries} roleMetadata={roleMetadata}
+                        totalPeople={extendedKPIs.totalPeople} onStateClick={handleStateClick} profile={profile} />
+                      <RoleSummaryTable roleMetadata={roleMetadata} roleBreakdown={extendedKPIs.roleBreakdown} />
+                    </>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="ai-insights" className="mt-0">
